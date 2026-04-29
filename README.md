@@ -199,9 +199,9 @@ View on [0G Chainscan](https://chainscan-galileo.0g.ai)
 
 ## 👥 Team
 
-- **Name:** [Your Name]
-- **Telegram:** [@yourtelegram]
-- **X (Twitter):** [@yourxhandle]
+- **Name:** xfajarr
+- **Telegram:** [Telegram](t.me/xfajarrr)
+- **X (Twitter):** [Twitter](x.com/fajarr0x)
 
 ---
 
