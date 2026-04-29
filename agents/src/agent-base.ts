@@ -13,7 +13,7 @@ export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
 
 export interface AgentConfig {
   role: "plaintiff" | "defendant" | "judge";
-  port: number; // local port for transport
+  port: number;
   address: string;
   privateKey: string;
   llmBaseUrl: string;
@@ -23,7 +23,7 @@ export interface AgentConfig {
   zgKvNodeUrl: string;
   zgRpcUrl: string;
   keeperhubKey: string;
-  contractAddress?: string; // deployed AgentCourt.sol
+  contractAddress?: string;
 }
 
 export abstract class BaseAgent {
@@ -43,10 +43,16 @@ export abstract class BaseAgent {
     const transportMode = process.env.AGENT_TRANSPORT || "axl";
 
     this.transport = createTransport(transportMode);
-    this.storage = new ZgStorage(
-      config.privateKey, config.zgRpcUrl,
-      config.zgIndexerUrl, config.zgKvNodeUrl
-    );
+
+    // Use new ZgStorage constructor (object-based config)
+    this.storage = new ZgStorage({
+      privateKey: config.privateKey,
+      rpcUrl: config.zgRpcUrl,
+      indexerUrl: config.zgIndexerUrl,
+      kvNodeUrl: config.zgKvNodeUrl,
+      network: "testnet",
+    });
+
     this.keeperhub = new KeeperHubClient(config.keeperhubKey);
     this.signer = new ethers.Wallet(config.privateKey);
 
@@ -62,6 +68,10 @@ export abstract class BaseAgent {
   // ===================== Lifecycle =====================
 
   async connect(): Promise<void> {
+    // Connect to 0G Storage first
+    await this.storage.connect();
+
+    // Start transport
     await this.transport.start(this.config.role, this.config.port);
 
     // Register message handler
@@ -74,7 +84,6 @@ export abstract class BaseAgent {
     console.log(`[${this.config.role.toUpperCase()}] Discovering peers...`);
     const discovered = await this.waitForPeers(30000);
     console.log(`[${this.config.role.toUpperCase()}] Peers: ${discovered.join(", ") || "none"}`);
-
     console.log(`[${this.config.role.toUpperCase()}] Ready.`);
   }
 
@@ -83,7 +92,6 @@ export abstract class BaseAgent {
     while (Date.now() - start < timeoutMs) {
       const peers = await this.transport.getPeers();
       if (peers.length >= 2) {
-        // All peers connected
         for (const p of peers) this.peers[p] = p;
         return peers;
       }
@@ -106,7 +114,6 @@ export abstract class BaseAgent {
       timestamp: Date.now(),
     };
 
-    // Sign message
     const hash = ethers.keccak256(
       ethers.toUtf8Bytes(JSON.stringify({ ...msg, signature: undefined }))
     );
@@ -124,15 +131,9 @@ export abstract class BaseAgent {
     }
   }
 
-  /** Poll for a specific message type */
-  async waitForMessage(
-    type: string,
-    fromRole?: AgentRole,
-    timeoutMs = 120000
-  ): Promise<AgentMessage> {
+  async waitForMessage(type: string, fromRole?: AgentRole, timeoutMs = 120000): Promise<AgentMessage> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
-      // Check existing queue
       const idx = this.messageQueue.findIndex(
         (m) =>
           m.msg.type === type &&
@@ -179,11 +180,9 @@ export abstract class BaseAgent {
     return this.storage.readValue(key);
   }
 
-  // ===================== Message handler (override in subclass) =====================
+  // ===================== Message handler =====================
 
-  protected onMessageReceived(_msg: AgentMessage, _from: AgentRole): void {
-    // Override in subclass for real-time message handling
-  }
+  protected onMessageReceived(_msg: AgentMessage, _from: AgentRole): void {}
 
   // ===================== Identity =====================
 
@@ -210,8 +209,6 @@ export abstract class BaseAgent {
     this.isRunning = false;
     await this.transport.stop();
   }
-
-  // ===================== Abstract =====================
 
   abstract start(): Promise<void>;
 }

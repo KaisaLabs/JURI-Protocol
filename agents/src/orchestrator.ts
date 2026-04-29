@@ -12,6 +12,7 @@
  * Usage: npx tsx src/orchestrator.ts
  */
 import { createTransport, type ITransport } from "./transport";
+import { ZgStorage } from "./storage";
 import type { AgentMessage, AgentRole } from "./types";
 import http from "http";
 import * as dotenv from "dotenv";
@@ -200,6 +201,11 @@ class Orchestrator {
           status: "ok",
           transport: this.transport.mode,
           activeCases: this.caseCounter,
+          storage: "0G Galileo Testnet (Turbo)",
+          storage: {
+            connected: this.storage?.isConnected() || false,
+            network: "0G Galileo Testnet (Turbo)",
+          },
         }));
         return;
       }
