@@ -1,13 +1,15 @@
 {
   "name": "@agent-court/agents",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:plaintiff": "tsx src/plaintiff.ts",
-    "dev:defendant": "tsx src/defendant.ts",
-    "dev:judge": "tsx src/judge.ts",
-    "dev:all": "concurrently \"pnpm dev:plaintiff\" \"pnpm dev:defendant\" \"pnpm dev:judge\""
+    "orchestrator": "tsx src/orchestrator.ts",
+    "plaintiff": "tsx src/plaintiff.ts",
+    "defendant": "tsx src/defendant.ts",
+    "judge": "tsx src/judge.ts",
+    "all:direct": "AGENT_TRANSPORT=direct concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\"",
+    "all:axl": "AGENT_TRANSPORT=axl concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\""
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.1",

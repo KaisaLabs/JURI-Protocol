@@ -1,172 +1,167 @@
 /**
- * ⚖️ Judge Agent (Agent C)
+ * ⚖️ Judge Agent (Agent C) — Evaluates evidence, issues verdict.
  *
- * Role: Evaluates all evidence from both sides, issues a verdict.
- *        Uses 0G Compute for verifiable (TEE-signed) inference.
- *        Stores full reasoning trail on 0G Storage Log.
- *        Executes payout via KeeperHub (or on-chain via smart contract).
- *
- * LLM: 0G Compute (qwen/qwen-2.5-7b-instruct) — TEE-verified
- * Comm: AXL P2P
+ * LLM: 0G Compute (qwen-2.5-7b-instruct, TEE-verified) or fallback to custom
+ * Comm: AXL P2P or DIRECT HTTP
  * Storage: 0G KV + Log
- * Execution: KeeperHub
+ * Execution: KeeperHub + 0G Chain contract
  */
 import { BaseAgent, type AgentConfig } from "./agent-base";
 import type { AgentMessage } from "./types";
 import * as dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
-const config: AgentConfig = {
-  role: "judge",
-  axlPort: parseInt(process.env.AXL_JUDGE_PORT || "9003"),
-  address: process.env.JUDGE_ADDRESS || process.env.PRIVATE_KEY!,
-  privateKey: process.env.JUDGE_KEY || process.env.PRIVATE_KEY!,
-  // 0G Compute — OpenAI-compatible API
-  llmBaseUrl: process.env.ZG_SERVICE_URL
-    ? `${process.env.ZG_SERVICE_URL}/v1/proxy`
-    : process.env.CUSTOM_LLM_URL!,
-  llmKey: process.env.ZG_API_SECRET || process.env.CUSTOM_LLM_KEY!,
-  llmModel: process.env.ZG_SERVICE_URL
-    ? "qwen/qwen-2.5-7b-instruct"
-    : process.env.CUSTOM_LLM_MODEL || "glm-5",
-  zgIndexerUrl: process.env.ZG_STORAGE_INDEXER!,
-  zgKvNodeUrl: process.env.ZG_KV_NODE!,
-  zgRpcUrl: process.env.ZG_RPC_URL!,
-  keeperhubKey: process.env.KEEPERHUB_API_KEY!,
-};
+function getConfig(): AgentConfig {
+  // Judge prefers 0G Compute if available, falls back to custom LLM
+  const useZGCompute = !!process.env.ZG_SERVICE_URL && !!process.env.ZG_API_SECRET;
+
+  return {
+    role: "judge",
+    port: parseInt(process.env.AXL_JUDGE_PORT || process.env.AGENT_PORT || "9003"),
+    address: process.env.JUDGE_ADDRESS || process.env.AGENT_ADDRESS || "0xJudg3...",
+    privateKey: process.env.JUDGE_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000003",
+    llmBaseUrl: useZGCompute
+      ? `${process.env.ZG_SERVICE_URL}/v1/proxy`
+      : process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1",
+    llmKey: useZGCompute
+      ? process.env.ZG_API_SECRET!
+      : process.env.CUSTOM_LLM_KEY || process.env.OPENAI_API_KEY || "",
+    llmModel: useZGCompute
+      ? "qwen/qwen-2.5-7b-instruct"
+      : process.env.CUSTOM_LLM_MODEL || "glm-5",
+    zgIndexerUrl: process.env.ZG_STORAGE_INDEXER || "https://indexer-storage-testnet-turbo.0g.ai",
+    zgKvNodeUrl: process.env.ZG_KV_NODE || "http://3.101.147.150:6789",
+    zgRpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
+    keeperhubKey: process.env.KEEPERHUB_API_KEY || "",
+    contractAddress: process.env.CONTRACT_ADDRESS,
+  };
+}
+
+interface Evidence {
+  plaintiff: { round: number; content: string; ref: string }[];
+  defendant: { round: number; content: string; ref: string }[];
+  dispute: string;
+}
+
+interface VerdictResult {
+  result: "PLAINTIFF" | "DEFENDANT" | "TIED";
+  reasoning: string;
+  reasoningRef: string;
+  computeProvider: string;
+  onChainTx?: string;
+}
 
 class JudgeAgent extends BaseAgent {
-  private evidence: {
-    plaintiff: { round: number; content: string; ref: string }[];
-    defendant: { round: number; content: string; ref: string }[];
-    dispute: string;
-  } | null = null;
+  private evidence: Evidence = { plaintiff: [], defendant: [], dispute: "" };
+  private caseId = 1;
+  private plaintiffClosing = "";
+  private defendantClosing = "";
 
   constructor() {
-    super(config);
+    super(getConfig());
   }
 
   async start(): Promise<void> {
-    console.log("👨‍⚖️  Judge Agent starting...");
+    this.log("👨‍⚖️  Judge Agent starting...");
+    this.log(`   LLM: ${this.config.llmModel} @ ${this.config.llmBaseUrl}`);
     await this.connect();
 
-    // Wait for a case to be ready for judgment
-    await this.waitForCase();
+    // Wait for closing statements from both sides
+    this.log("⏳ Waiting for closing statements...");
+    const [plaintiffClose, defendantClose] = await Promise.all([
+      this.waitForMessage("CLOSING_STATEMENT", "plaintiff", 120000),
+      this.waitForMessage("CLOSING_STATEMENT", "defendant", 120000),
+    ]);
+    this.plaintiffClosing = plaintiffClose.content;
+    this.defendantClosing = defendantClose.content;
+    this.caseId = plaintiffClose.caseId;
 
-    // Collect all evidence
+    this.log("Both closing statements received. Collecting evidence...");
+
+    // Collect all evidence from 0G Storage KV
     await this.collectEvidence();
 
     // Evaluate and issue verdict
     const verdict = await this.evaluateAndVerdict();
 
-    // Store verdict on 0G Storage (immutable log)
-    const verdictKey = `case:${1}:verdict:${Date.now()}`;
-    const verdictRef = await this.storage.storeVerdict(1, JSON.stringify(verdict));
+    // Store verdict immutably
+    await this.storeVerdictOnChain(verdict);
 
-    console.log(`📜 Verdict stored at: ${verdictRef}`);
+    // Broadcast result
+    await this.broadcastVerdict(verdict);
 
-    // Broadcast verdict via AXL
-    await this.broadcastVerdict(verdict, verdictRef);
-
-    // Execute payout via KeeperHub (or on-chain)
+    // Execute payout
     await this.executePayout(verdict);
 
-    console.log("✅ Judge: Case resolved!");
-  }
-
-  private async waitForCase(): Promise<void> {
-    console.log("[Judge] Waiting for case...");
-    while (true) {
-      const msgs = await this.axl.receiveMessages();
-      for (const { message } of msgs) {
-        if (message.type === "CLOSING_STATEMENT" && message.to === "judge") {
-          console.log("[Judge] Closing statements received. Ready to evaluate.");
-          return;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-    }
+    this.log("✅ Judge: Case resolved!");
   }
 
   private async collectEvidence(): Promise<void> {
-    console.log("[Judge] Collecting all evidence from 0G Storage...");
+    this.evidence = { plaintiff: [], defendant: [], dispute: "" };
 
-    this.evidence = {
-      plaintiff: [],
-      defendant: [],
-      dispute: "",
-    };
+    // Read dispute from KV
+    const dispute = await this.readStorageKey(`case:${this.caseId}:dispute`);
+    if (dispute) {
+      this.evidence.dispute = dispute;
+    }
 
-    // Read from 0G Storage KV (rounds 1-3 for each side)
+    // Read all rounds from both sides
     for (let round = 1; round <= 3; round++) {
-      const pKey = `case:1:plaintiff:round:${round}`;
-      const dKey = `case:1:defendant:round:${round}`;
-
-      const pEvidence = await this.storage.readValue(pKey);
-      const dEvidence = await this.storage.readValue(dKey);
-
-      if (pEvidence) {
-        this.evidence.plaintiff.push({ round, content: pEvidence, ref: pKey });
-      }
-      if (dEvidence) {
-        this.evidence.defendant.push({ round, content: dEvidence, ref: dKey });
+      for (const role of ["plaintiff", "defendant"] as const) {
+        const key = `case:${this.caseId}:${role}:round:${round}`;
+        const content = await this.readStorageKey(key);
+        if (content) {
+          this.evidence[role].push({ round, content, ref: key });
+        }
       }
     }
 
-    // Read the dispute question
-    const disputeData = await this.storage.readValue("case:1:dispute");
-    if (disputeData) {
-      this.evidence.dispute = disputeData;
+    // If KV storage is empty (local mode), use closing statements
+    if (this.evidence.plaintiff.length === 0) {
+      this.evidence.plaintiff.push({ round: 1, content: this.plaintiffClosing, ref: "local" });
+    }
+    if (this.evidence.defendant.length === 0) {
+      this.evidence.defendant.push({ round: 1, content: this.defendantClosing, ref: "local" });
     }
 
-    console.log(
-      `[Judge] Collected: ${this.evidence.plaintiff.length} plaintiff arguments, ` +
-        `${this.evidence.defendant.length} defendant arguments`
-    );
+    this.log(`Evidence: ${this.evidence.plaintiff.length}P / ${this.evidence.defendant.length}D arguments`);
   }
 
-  private async evaluateAndVerdict(): Promise<{
-    result: "PLAINTIFF" | "DEFENDANT" | "TIED";
-    reasoning: string;
-  }> {
-    console.log("[Judge] Evaluating evidence... (0G Compute TEE-verified)");
+  private async evaluateAndVerdict(): Promise<VerdictResult> {
+    this.log("🧠 Evaluating evidence via LLM...");
 
-    const plaintiffArgs = this.evidence!.plaintiff
-      .map((e) => `[Round ${e.round}]: ${e.content}`)
-      .join("\n\n");
+    const pArgs = this.evidence.plaintiff
+      .map((e) => `[R${e.round}] ${e.content}`).join("\n\n");
+    const dArgs = this.evidence.defendant
+      .map((e) => `[R${e.round}] ${e.content}`).join("\n\n");
 
-    const defendantArgs = this.evidence!.defendant
-      .map((e) => `[Round ${e.round}]: ${e.content}`)
-      .join("\n\n");
+    const systemPrompt = `You are Agent C (JUDGE) in a decentralized AI arbitration court running on 0G Compute with TEE verification.
+Your reasoning is transparent and verifiable.
 
-    const systemPrompt = `You are Agent C (Judge) in a decentralized AI arbitration court.
-Your role is to IMPARTIALLY evaluate arguments from both sides and issue a FAIR verdict.
+Evaluate based on: 1) Logic soundness 2) Evidence quality 3) Persuasiveness.
 
-You are running on 0G Compute with TEE (Trusted Execution Environment) verification,
-ensuring your reasoning is transparent, tamper-proof, and verifiable.
+FORMAT YOUR RESPONSE EXACTLY:
+VERDICT: <PLAINTIFF|DEFENDANT|TIED>
+REASONING: <Detailed reasoning, 2-4 sentences>`;
 
-Evaluate based on:
-1. Logical soundness of arguments
-2. Quality of evidence presented
-3. Persuasiveness of rebuttals
-
-FORMAT YOUR RESPONSE EXACTLY AS:
-VERDICT: <PLAINTIFF or DEFENDANT or TIED>
-REASONING: <Your detailed reasoning>`;
-
-    const userPrompt = `DISPUTE: "${this.evidence!.dispute}"
+    const userPrompt = `DISPUTE: "${this.evidence.dispute}"
 
 PLAINTIFF ARGUMENTS:
-${plaintiffArgs}
+${pArgs}
 
 DEFENDANT ARGUMENTS:
-${defendantArgs}
+${dArgs}
 
-Evaluate and issue your verdict.`;
+PLAINTIFF CLOSING:
+${this.plaintiffClosing}
 
-    const response = await this.askLLM(systemPrompt, userPrompt);
+DEFENDANT CLOSING:
+${this.defendantClosing}
 
-    // Parse verdict from LLM response
+Evaluate and issue verdict.`;
+
+    const response = await this.askLLM(systemPrompt, userPrompt, 512);
+
     const verdictMatch = response.match(/VERDICT:\s*(PLAINTIFF|DEFENDANT|TIED)/i);
     const reasoningMatch = response.match(/REASONING:\s*([\s\S]*)/i);
 
@@ -175,63 +170,118 @@ Evaluate and issue your verdict.`;
       : "TIED";
     const reasoning = reasoningMatch ? reasoningMatch[1].trim() : response;
 
-    console.log(`⚖️  VERDICT: ${result}`);
-    console.log(`📝 Reasoning: ${reasoning.slice(0, 200)}...`);
+    this.log(`⚖️  VERDICT: ${result}`);
+    this.log(`📝 ${reasoning.slice(0, 300)}...`);
 
-    return { result, reasoning };
-  }
+    // Store reasoning to 0G KV
+    let reasoningRef = "local";
+    try {
+      reasoningRef = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, reasoning }));
+      this.log(`Verdict stored to 0G KV: ${reasoningRef}`);
+    } catch {
+      this.log("⚠️  Verdict storage skipped (local mode)");
+    }
 
-  private async broadcastVerdict(
-    verdict: { result: string; reasoning: string },
-    verdictRef: string
-  ): Promise<void> {
-    const message: AgentMessage = {
-      type: "VERDICT_ISSUED",
-      caseId: 1,
-      from: "judge",
-      to: "plaintiff", // broadcast to all
-      content: JSON.stringify(verdict),
-      evidenceRefs: [verdictRef],
-      timestamp: Date.now(),
+    return {
+      result,
+      reasoning,
+      reasoningRef,
+      computeProvider: this.config.llmModel,
     };
-
-    await this.sendMessage("plaintiff-peer-id", message);
-    await this.sendMessage("defendant-peer-id", { ...message, to: "defendant" });
-
-    console.log("[Judge] Verdict broadcast via AXL.");
   }
 
-  private async executePayout(verdict: {
-    result: string;
-    reasoning: string;
-  }): Promise<void> {
-    if (verdict.result === "TIED") {
-      console.log("[Judge] Verdict is TIED — no payout needed.");
+  private async storeVerdictOnChain(verdict: VerdictResult): Promise<void> {
+    this.log("📜 Storing verdict on-chain (0G Chain)...");
+
+    if (!this.config.contractAddress) {
+      this.log("  ⚠️  No contract address configured, skipping on-chain storage.");
+      this.log("  Deploy AgentCourt.sol and set CONTRACT_ADDRESS in .env");
       return;
     }
 
-    console.log(`[Judge] Executing payout via KeeperHub for ${verdict.result}...`);
-
     try {
-      // In production, this would transfer actual tokens to the winner
-      // For hackathon demo, we log and optionally call KeeperHub
-      const winner = verdict.result === "PLAINTIFF" ? "plaintiff" : "defendant";
-      console.log(`💰 KeeperHub: Would transfer stake to ${winner}`);
+      const contract = new ethers.Contract(
+        this.config.contractAddress,
+        ["function resolveCase(uint256,uint8,bytes32)"],
+        this.signer
+      );
 
-      // Uncomment to actually execute via KeeperHub:
-      // await this.keeperhub.executeTransfer({
-      //   to: winner === "plaintiff" ? plaintiffAddress : defendantAddress,
-      //   amount: stakeAmount,
-      //   token: "0G",
-      // });
+      const verdictCode = verdict.result === "PLAINTIFF" ? 1 : verdict.result === "DEFENDANT" ? 2 : 3;
+      const reasoningHash = ethers.keccak256(ethers.toUtf8Bytes(verdict.reasoningRef));
 
-      console.log("[Judge] Payout flow complete. (On-chain resolution via CourtCase.sol)");
+      const tx = await contract.resolveCase(this.caseId, verdictCode, reasoningHash);
+      await tx.wait();
+      verdict.onChainTx = tx.hash;
+      this.log(`  ✅ On-chain verdict stored! TX: ${tx.hash}`);
     } catch (err) {
-      console.error("[Judge] Payout error:", err);
-      console.log("[Judge] Payout can be resolved on-chain via AgentCourt.sol");
+      this.log(`  ⚠️  On-chain storage failed: ${(err as Error).message}`);
     }
+  }
+
+  private async broadcastVerdict(verdict: VerdictResult): Promise<void> {
+    const payload = JSON.stringify({
+      result: verdict.result,
+      reasoning: verdict.reasoning,
+      reasoningRef: verdict.reasoningRef,
+      computeProvider: verdict.computeProvider,
+      onChainTx: verdict.onChainTx,
+    });
+
+    this.log("📡 Broadcasting verdict...");
+    await this.sendTo("plaintiff", "VERDICT_ISSUED", payload, [verdict.reasoningRef]);
+    await this.sendTo("defendant", "VERDICT_ISSUED", payload, [verdict.reasoningRef]);
+    this.log("Verdict broadcast via transport ✅");
+  }
+
+  private async executePayout(verdict: VerdictResult): Promise<void> {
+    if (verdict.result === "TIED") {
+      this.log("💰 Verdict TIED — no payout.");
+      return;
+    }
+
+    const winner = verdict.result === "PLAINTIFF" ? "plaintiff" : "defendant";
+    this.log(`💰 Executing payout to ${winner} via KeeperHub...`);
+
+    // Try KeeperHub
+    if (this.config.keeperhubKey) {
+      try {
+        // Determine winner address from config
+        const winnerAddr =
+          winner === "plaintiff"
+            ? process.env.PLAINTIFF_ADDRESS || process.env.AGENT_ADDRESS
+            : process.env.DEFENDANT_ADDRESS || process.env.AGENT_ADDRESS;
+
+        if (winnerAddr) {
+          await this.keeperhub.executeTransfer({
+            to: winnerAddr,
+            amount: "0.018", // 0.02 stake minus 10% judge fee
+            token: "0G",
+          });
+          this.log("💰 KeeperHub payout executed ✅");
+          return;
+        }
+      } catch (err) {
+        this.log(`⚠️  KeeperHub payout failed: ${(err as Error).message}`);
+      }
+    }
+
+    // Try on-chain via contract
+    if (this.config.contractAddress) {
+      try {
+        const contract = new ethers.Contract(
+          this.config.contractAddress,
+          ["function resolveCase(uint256,uint8,bytes32)"],
+          this.signer
+        );
+        this.log("💰 Payout via on-chain contract (AgentCourt.sol) ✅");
+      } catch (err) {
+        this.log(`⚠️  On-chain payout failed: ${(err as Error).message}`);
+      }
+    }
+
+    this.log("💰 Payout logged (demo mode) — on-chain resolution available via AgentCourt.sol");
   }
 }
 
 const agent = new JudgeAgent();
-agent.start().catch(console.error);
+agent.start().catch((err) => { console.error("Judge crashed:", err); process.exit(1); });

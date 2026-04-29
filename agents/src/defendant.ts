@@ -1,171 +1,112 @@
 /**
- * ⚖️ Defendant Agent (Agent B)
+ * ⚖️ Defendant Agent (Agent B) — Argues AGAINST the proposition.
  *
- * Role: Responds to disputes, presents counter-arguments,
- *       challenges plaintiff's evidence with counter-evidence.
- *
+ * Transport: AXL (production) / DIRECT (dev/test)
  * LLM: Custom provider (GLM-5 / qwen3.6-plus)
- * Comm: AXL P2P
- * Storage: 0G KV for arguments
+ * Storage: 0G KV
  */
 import { BaseAgent, type AgentConfig } from "./agent-base";
-import type { AgentMessage } from "./types";
 import * as dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
-const config: AgentConfig = {
-  role: "defendant",
-  axlPort: parseInt(process.env.AXL_DEFENDANT_PORT || "9002"),
-  address: process.env.DEFENDANT_ADDRESS || process.env.PRIVATE_KEY!,
-  privateKey: process.env.DEFENDANT_KEY || process.env.PRIVATE_KEY!,
-  llmBaseUrl: process.env.CUSTOM_LLM_URL!,
-  llmKey: process.env.CUSTOM_LLM_KEY!,
-  llmModel: process.env.CUSTOM_LLM_MODEL || "glm-5",
-  zgIndexerUrl: process.env.ZG_STORAGE_INDEXER!,
-  zgKvNodeUrl: process.env.ZG_KV_NODE!,
-  zgRpcUrl: process.env.ZG_RPC_URL!,
-  keeperhubKey: process.env.KEEPERHUB_API_KEY!,
-};
+function getConfig(): AgentConfig {
+  return {
+    role: "defendant",
+    port: parseInt(process.env.AXL_DEFENDANT_PORT || process.env.AGENT_PORT || "9002"),
+    address: process.env.DEFENDANT_ADDRESS || process.env.AGENT_ADDRESS || "0xD3f3ndant...",
+    privateKey: process.env.DEFENDANT_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000002",
+    llmBaseUrl: process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1",
+    llmKey: process.env.CUSTOM_LLM_KEY || process.env.OPENAI_API_KEY || "",
+    llmModel: process.env.CUSTOM_LLM_MODEL || "glm-5",
+    zgIndexerUrl: process.env.ZG_STORAGE_INDEXER || "https://indexer-storage-testnet-turbo.0g.ai",
+    zgKvNodeUrl: process.env.ZG_KV_NODE || "http://3.101.147.150:6789",
+    zgRpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
+    keeperhubKey: process.env.KEEPERHUB_API_KEY || "",
+    contractAddress: process.env.CONTRACT_ADDRESS,
+  };
+}
 
 class DefendantAgent extends BaseAgent {
-  private disputeQuestion: string | null = null;
-  private plaintiffArguments: string[] = [];
+  private disputeQuestion = "";
+  private caseId = 1;
+  private allPlaintiffArgs: string[] = [];
 
   constructor() {
-    super(config);
+    super(getConfig());
   }
 
   async start(): Promise<void> {
-    console.log("🛡️  Defendant Agent starting...");
+    this.log("🛡️  Defendant Agent starting...");
     await this.connect();
 
-    // Wait for case creation
-    await this.waitForCaseCreation();
+    // Wait for CASE_CREATED
+    const caseMsg = await this.waitForMessage("CASE_CREATED", undefined, 120000);
+    this.disputeQuestion = caseMsg.content;
+    this.caseId = caseMsg.caseId;
+    this.log(`📋 Case #${this.caseId}: "${this.disputeQuestion}"`);
 
-    console.log(`📋 Dispute: "${this.disputeQuestion}"`);
+    // === Round 1: Counter to opening ===
+    this.log("⏳ Waiting for plaintiff's opening argument...");
+    const arg1 = await this.waitForMessage("ARGUMENT_SUBMITTED", "plaintiff", 60000);
+    this.allPlaintiffArgs.push(arg1.content);
+    const counter1 = await this.generateCounter(1, arg1.content);
+    const ref1 = await this.tryStore(1, counter1);
+    await this.sendTo("plaintiff", "COUNTER_ARGUMENT", counter1, ref1 ? [ref1] : []);
+    this.log("Round 1 counter sent");
 
-    // Round 1: Respond to plaintiff's opening
-    await this.respondToArgument(1);
+    // === Round 2: Counter to rebuttal ===
+    this.log("⏳ Waiting for plaintiff's rebuttal...");
+    const arg2 = await this.waitForMessage("REBUTTAL", "plaintiff", 60000);
+    this.allPlaintiffArgs.push(arg2.content);
+    const counter2 = await this.generateCounter(2, arg2.content);
+    const ref2 = await this.tryStore(2, counter2);
+    await this.sendTo("plaintiff", "COUNTER_ARGUMENT", counter2, ref2 ? [ref2] : []);
+    this.log("Round 2 counter sent");
 
-    // Round 2: Further counter
-    await this.respondToArgument(2);
+    // === Round 3: Final counter + closing ===
+    this.log("⏳ Waiting for plaintiff's final rebuttal...");
+    const arg3 = await this.waitForMessage("REBUTTAL", "plaintiff", 60000);
+    this.allPlaintiffArgs.push(arg3.content);
+    const counter3 = await this.generateCounter(3, arg3.content);
+    const ref3 = await this.tryStore(3, counter3);
 
-    // Round 3: Closing statement
-    await this.closingStatement(3);
+    // Send closing to judge
+    const closingPrompt = `You are the Defendant. Present your CLOSING STATEMENT.
+Dispute: "${this.disputeQuestion}"
+Plaintiff's arguments: ${this.allPlaintiffArgs.map((a, i) => `[R${i + 1}] ${a.slice(0, 200)}`).join(" | ")}
+Summarize why the plaintiff's case fails and why you should win.`;
+    const closing = await this.askLLM(closingPrompt, "");
+    await this.sendTo("judge", "CLOSING_STATEMENT", closing, [ref1, ref2, ref3].filter(Boolean) as string[]);
+    this.log("Closing statement sent to judge ✅");
 
-    console.log("✅ Defendant: All arguments submitted. Waiting for verdict...");
+    // Wait for verdict
+    this.log("⏳ Waiting for verdict...");
+    const verdictMsg = await this.waitForMessage("VERDICT_ISSUED", "judge", 120000);
+    const verdict = JSON.parse(verdictMsg.content);
+    this.log(`⚖️  VERDICT: ${verdict.result}`);
+    this.log(`📝 ${verdict.reasoning?.slice(0, 200)}...`);
+
+    this.log("✅ Defendant: Done.");
   }
 
-  private async waitForCaseCreation(): Promise<void> {
-    console.log("[Defendant] Waiting for case creation...");
-    while (!this.disputeQuestion) {
-      const msgs = await this.axl.receiveMessages();
-      for (const { message } of msgs) {
-        if (message.type === "CASE_CREATED") {
-          this.disputeQuestion = message.content;
-          return;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-    }
+  private async generateCounter(round: number, plaintiffArg: string): Promise<string> {
+    const systemPrompt = `You are Agent B (DEFENDANT) in an AI agent arbitration court on the 0G blockchain.
+Your role: ARGUE AGAINST the proposition. Challenge reasoning, point out flaws, present counter-evidence.
+Round ${round} of 3.
+Plaintiff's argument: "${plaintiffArg}"`;
+
+    const userPrompt = `Counter the plaintiff's claim for dispute: "${this.disputeQuestion}". Be logical and evidence-based.`;
+    return this.askLLM(systemPrompt, userPrompt);
   }
 
-  private async respondToArgument(round: number): Promise<void> {
-    // Wait for plaintiff's argument
-    console.log(`[Defendant] Waiting for plaintiff round ${round}...`);
-    const plaintiffMsg = await this.waitForMessage(
-      round === 1 ? "ARGUMENT_SUBMITTED" : "REBUTTAL"
-    );
-
-    this.plaintiffArguments.push(plaintiffMsg.content);
-
-    const systemPrompt = `You are Agent B (Defendant) in an AI agent arbitration court.
-Your role is to ARGUE AGAINST the plaintiff's proposition. Challenge their
-reasoning, point out flaws, and present counter-evidence.
-
-Current dispute: "${this.disputeQuestion}"
-
-Plaintiff's argument: "${plaintiffMsg.content}"
-
-Respond with a clear counter-argument in Round ${round}.`;
-
-    const argument = await this.askLLM(
-      systemPrompt,
-      `Present your counter-argument (Round ${round}) against the plaintiff's claim.`
-    );
-
-    // Store to 0G Storage
-    const evidenceRef = await this.storage.storeEvidence(
-      1,
-      "defendant",
-      round,
-      argument
-    );
-
-    // Send to plaintiff via AXL
-    await this.sendMessage("plaintiff-peer-id", {
-      type: "COUNTER_ARGUMENT",
-      caseId: 1,
-      from: "defendant",
-      to: "plaintiff",
-      content: argument,
-      evidenceRefs: [evidenceRef],
-      timestamp: Date.now(),
-    });
-
-    console.log(`[Defendant] Round ${round} counter stored: ${evidenceRef}`);
-  }
-
-  private async closingStatement(round: number): Promise<void> {
-    const plaintiffMsg = await this.waitForMessage("REBUTTAL");
-
-    const systemPrompt = `You are Agent B (Defendant). Present your CLOSING STATEMENT.
-Summarize why the plaintiff's case fails and why the verdict should be in your favor.
-
-All plaintiff arguments: ${this.plaintiffArguments.join(" | ")}
-Plaintiff's final argument: "${plaintiffMsg.content}"`;
-
-    const argument = await this.askLLM(systemPrompt, "Present your closing statement.");
-    const evidenceRef = await this.storage.storeEvidence(1, "defendant", round, argument);
-
-    await this.sendMessage("plaintiff-peer-id", {
-      type: "CLOSING_STATEMENT",
-      caseId: 1,
-      from: "defendant",
-      to: "judge",
-      content: argument,
-      evidenceRefs: [evidenceRef],
-      timestamp: Date.now(),
-    });
-
-    // Also send to judge
-    await this.sendMessage("judge-peer-id", {
-      type: "CLOSING_STATEMENT",
-      caseId: 1,
-      from: "defendant",
-      to: "judge",
-      content: argument,
-      evidenceRefs: [evidenceRef],
-      timestamp: Date.now(),
-    });
-  }
-
-  private async waitForMessage(type: string): Promise<AgentMessage> {
-    while (true) {
-      const msgs = await this.axl.receiveMessages();
-      for (const { message } of msgs) {
-        if (
-          message.type === type &&
-          (message.to === "defendant" || message.to === "all")
-        ) {
-          console.log(`[Defendant] Received: ${type}`);
-          return message;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 1000));
+  private async tryStore(round: number, content: string): Promise<string | null> {
+    try {
+      return await this.storage.storeEvidence(this.caseId, this.config.role, round, content);
+    } catch {
+      return null;
     }
   }
 }
 
 const agent = new DefendantAgent();
-agent.start().catch(console.error);
+agent.start().catch((err) => { console.error("Defendant crashed:", err); process.exit(1); });
