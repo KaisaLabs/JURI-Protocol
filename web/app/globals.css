@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  --color-court-gold: #c9a84c;
+  --color-court-dark: #0a0a0f;
+  --color-court-panel: #14141f;
+  --color-court-border: #2a2a3a;
+}
+
+body {
+  background: var(--color-court-dark);
+  color: #e0e0e0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}

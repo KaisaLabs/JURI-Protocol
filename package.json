@@ -1,0 +1,17 @@
+{
+  "name": "agent-court",
+  "version": "0.1.0",
+  "private": true,
+  "description": "⚖️ Agent Court — Decentralized AI Agent Arbitration on 0G",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "agent:plaintiff": "pnpm --filter agents dev:plaintiff",
+    "agent:defendant": "pnpm --filter agents dev:defendant",
+    "agent:judge": "pnpm --filter agents dev:judge",
+    "contract:compile": "pnpm --filter contracts compile",
+    "contract:deploy": "pnpm --filter contracts deploy",
+    "setup": "bash scripts/setup.sh"
+  },
+  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" }
+}

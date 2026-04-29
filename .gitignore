@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+out/
+.env
+*.pem
+node-config-*.json
+artifacts/
+cache/
+typechain-types/
+!.env.example
