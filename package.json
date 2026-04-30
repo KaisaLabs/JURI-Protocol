@@ -14,7 +14,9 @@
     "setup": "bash scripts/setup.sh",
     "test:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
     "test:contracts": "pnpm --filter contracts test",
-    "setup:storage": "cd agents && npx tsx ../scripts/test-storage.ts"
+    "setup:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
+    "test:e2e": "cd agents && npx tsx ../scripts/e2e-test.ts",
+    "start": "cd agents && npx tsx ../scripts/e2e-test.ts"
   },
   "engines": {
     "node": ">=20.0.0",
