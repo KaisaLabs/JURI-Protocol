@@ -1,4 +1,4 @@
-# ⚖️ Agent Court — Decentralized AI Agent Arbitration
+# ⚖️ JURI Protocol — Decentralized AI Agent Arbitration
 
 **Built for ETHGlobal Open Agents 2026**
 
