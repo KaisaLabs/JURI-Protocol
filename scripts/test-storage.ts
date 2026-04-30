@@ -1,50 +1,45 @@
 #!/usr/bin/env npx tsx
 /**
  * 0G Storage Integration Test
- *
- * Verifies:
- *   1. Connection to 0G Storage indexer
- *   2. KV write + read
- *   3. File upload (immutable log)
- *   4. Wallet balance check
- *
- * Usage: npx tsx scripts/test-storage.ts
+ * Usage: pnpm test:storage
  */
 import { ZgStorage, ZG_NETWORKS } from "../agents/src/storage";
-import * as dotenv from "dotenv";
-dotenv.config();
 
-const COLORS = {
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  yellow: "\x1b[33m",
-  blue: "\x1b[34m",
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-};
-
-function log(emoji: string, msg: string, color = "") {
-  console.log(`${color}${emoji} ${msg}${COLORS.reset}`);
+// dotenv — try multiple locations (no top-level await)
+let dotenvConfig: ((opts?: any) => void) | null = null;
+try {
+  const dotenv = require("dotenv");
+  dotenvConfig = dotenv.config;
+} catch {
+  try {
+    const dotenv = require("../agents/node_modules/dotenv");
+    dotenvConfig = dotenv.config;
+  } catch {
+    console.log("⚠️  dotenv not found — using existing env vars");
+  }
+}
+if (dotenvConfig) {
+  dotenvConfig({ path: ".env" });
+  dotenvConfig({ path: "../.env" });
 }
 
-async function main() {
-  console.log(`\n${COLORS.bold}${COLORS.blue}╔══════════════════════════════════╗`);
-  console.log(`║  0G Storage Integration Test    ║`);
-  console.log(`╚══════════════════════════════════╝${COLORS.reset}\n`);
+const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", b: "\x1b[34m", x: "\x1b[0m", B: "\x1b[1m" };
+function log(e: string, m: string, c = "") { console.log(`${c}${e} ${m}${C.x}`); }
 
-  // ── Check prerequisites ──
+async function main() {
+  console.log(`\n${C.B}${C.b}╔══════════════════════════════════════╗`);
+  console.log(`║   0G Storage Integration Test        ║`);
+  console.log(`╚══════════════════════════════════════╝${C.x}\n`);
+
   const privateKey = process.env.PRIVATE_KEY;
-  if (!privateKey || privateKey === "0x_your_private_key_here") {
-    log("❌", "PRIVATE_KEY not set in .env — please configure first", COLORS.red);
-    log("💡", "1. Create wallet: cast wallet new", COLORS.yellow);
-    log("💡", "2. Fund at https://faucet.0g.ai", COLORS.yellow);
-    log("💡", "3. Set PRIVATE_KEY in .env", COLORS.yellow);
+  if (!privateKey || privateKey.startsWith("0x_your")) {
+    log("❌", "PRIVATE_KEY not set — create .env first", C.r);
+    log("💡", "cp .env.example .env && edit PRIVATE_KEY", C.y);
+    log("💡", "Fund at https://faucet.0g.ai", C.y);
     process.exit(1);
   }
 
-  // ── Initialize Storage ──
-  log("🔧", "Initializing 0G Storage client...", COLORS.blue);
-
+  log("🔧", "Initializing 0G Storage...", C.b);
   const storage = new ZgStorage({
     privateKey,
     network: "testnet",
@@ -53,96 +48,55 @@ async function main() {
     rpcUrl: process.env.ZG_RPC_URL,
   });
 
-  const address = storage.getAddress();
-  log("👛", `Wallet: ${address}`, COLORS.yellow);
+  log("👛", `Wallet: ${storage.getAddress()}`, C.y);
 
-  // ── Check balance ──
-  log("💰", "Checking balance...", COLORS.blue);
+  // Balance
   try {
-    const balance = await storage.getBalance();
-    log("💰", `Balance: ${balance} 0G`, balance === "0.0" ? COLORS.red : COLORS.green);
-    if (parseFloat(balance) < 0.001) {
-      log("⚠️ ", "Balance too low! Get tokens at https://faucet.0g.ai", COLORS.yellow);
-    }
-  } catch (err) {
-    log("⚠️ ", `Balance check failed: ${(err as Error).message}`, COLORS.yellow);
-  }
+    const bal = await storage.getBalance();
+    log("💰", `Balance: ${bal} 0G`, parseFloat(bal) < 0.001 ? C.r : C.g);
+  } catch (e: any) { log("⚠️ ", `Balance check: ${e.message}`, C.y); }
 
-  // ── Test 1: Connect ──
-  log("\n📡", "Test 1: Connect to 0G Indexer", COLORS.blue);
-  const connected = await storage.connect();
-  if (!connected) {
-    log("❌", "Connection FAILED — check network/endpoints", COLORS.red);
-    log("💡", "Indexer: " + ZG_NETWORKS.testnet.turbo.indexer, COLORS.yellow);
-    log("💡", "RPC:     " + ZG_NETWORKS.testnet.rpc, COLORS.yellow);
-    log("💡", "Make sure you have 0G testnet tokens for gas", COLORS.yellow);
+  // Test 1: Connect
+  log("\n📡", "Test 1: Connect to Indexer", C.b);
+  const ok = await storage.connect();
+  if (!ok) {
+    log("❌", "FAILED — indexer unreachable or no gas", C.r);
+    log("💡", ZG_NETWORKS.testnet.turbo.indexer, C.y);
     process.exit(1);
   }
-  log("✅", "Connection OK", COLORS.green);
+  log("✅", "Connected", C.g);
 
-  // ── Test 2: KV Write ──
-  log("\n📝", "Test 2: KV Write", COLORS.blue);
-  const testKey = `test:${Date.now()}`;
-  const testValue = `Hello 0G Storage! Timestamp: ${new Date().toISOString()}`;
-
+  // Test 2: KV Write
+  log("\n📝", "Test 2: KV Write", C.b);
   try {
-    const ref = await storage.storeEvidence(0, "test", 1, testValue);
-    log("✅", `KV Write OK: ${ref}`, COLORS.green);
-  } catch (err) {
-    log("❌", `KV Write FAILED: ${(err as Error).message}`, COLORS.red);
-  }
+    const ref = await storage.storeEvidence(0, "test", 1,
+      `Test @ ${new Date().toISOString()}`);
+    log("✅", `KV Write: ${ref}`, C.g);
+  } catch (e: any) { log("❌", `KV Write: ${e.message}`, C.r); }
 
-  // ── Test 3: KV Read ──
-  log("\n📖", "Test 3: KV Read", COLORS.blue);
+  // Test 3: KV Read
+  log("\n📖", "Test 3: KV Read", C.b);
   try {
-    const readKey = `case:0:test:round:1`;
-    const value = await storage.readValue(readKey);
-    if (value) {
-      log("✅", `KV Read OK: ${value.slice(0, 60)}...`, COLORS.green);
-    } else {
-      log("⚠️ ", "KV Read returned null (may need time to propagate)", COLORS.yellow);
-      log("💡", "Re-run script in a few seconds for read test", COLORS.yellow);
-    }
-  } catch (err) {
-    log("⚠️ ", `KV Read error: ${(err as Error).message}`, COLORS.yellow);
-  }
+    const v = await storage.readValue(`case:0:test:round:1`);
+    log(v ? "✅" : "⚠️ ", v ? `Read: ${v.slice(0, 60)}...` : "Null (may need time)", v ? C.g : C.y);
+  } catch (e: any) { log("⚠️ ", `KV Read: ${e.message}`, C.y); }
 
-  // ── Test 4: File Upload (immutable log) ──
-  log("\n📦", "Test 4: File Upload (immutable log)", COLORS.blue);
+  // Test 4: File Upload
+  log("\n📦", "Test 4: File Upload (immutable log)", C.b);
   try {
-    const logEntry = {
-      event: "STORAGE_INTEGRATION_TEST",
-      timestamp: Date.now(),
-      wallet: address,
-      testKey,
-      message: "Agent Court 0G Storage verified",
-    };
+    const r = await storage.storeLog(0, {
+      event: "STORAGE_TEST", ts: Date.now(),
+      wallet: storage.getAddress(), msg: "0G Storage verified ✅"
+    });
+    if (r) {
+      log("✅", "File Upload OK", C.g);
+      log("   ", `Root: ${r.rootHash}`, C.y);
+      log("   ", `TX:   ${r.txHash}`, C.y);
+      log("   ", `Scan: ${ZG_NETWORKS.testnet.storageScan}`, C.y);
+    } else { log("⚠️ ", "Upload null (check balance)", C.y); }
+  } catch (e: any) { log("⚠️ ", `Upload: ${e.message}`, C.y); }
 
-    const result = await storage.storeLog(0, logEntry);
-    if (result) {
-      log("✅", `File Upload OK`, COLORS.green);
-      log("   ", `Root Hash: ${result.rootHash}`, COLORS.yellow);
-      log("   ", `TX Hash:   ${result.txHash}`, COLORS.yellow);
-      log("   ", `Verify:    ${ZG_NETWORKS.testnet.storageScan}`, COLORS.yellow);
-    } else {
-      log("⚠️ ", "File Upload returned null (check balance)", COLORS.yellow);
-    }
-  } catch (err) {
-    log("⚠️ ", `File Upload error: ${(err as Error).message}`, COLORS.yellow);
-  }
-
-  // ── Summary ──
-  console.log(`\n${COLORS.bold}${COLORS.green}✅ 0G Storage Integration Test Complete!${COLORS.reset}`);
-  console.log(`${COLORS.bold}Track: 0G Autonomous Agents — evidence storage verified${COLORS.reset}\n`);
-
-  console.log("Next steps:");
-  console.log("  1. Run agents:    pnpm agent:plaintiff");
-  console.log("  2. Evidence will be auto-stored to 0G Storage KV");
-  console.log("  3. Verdict will be stored immutably to 0G Storage Log");
-  console.log("  4. Verify at:     https://storagescan-galileo.0g.ai");
+  console.log(`\n${C.B}${C.g}✅ 0G Storage Integration Complete!${C.x}\n`);
 }
 
-main().catch((err) => {
-  console.error(`\n${COLORS.red}💥 Test crashed:${COLORS.reset}`, err);
-  process.exit(1);
-});
+main().catch((e) => { console.error(`\n${C.r}💥 Crashed:${C.x}`, e); process.exit(1); });

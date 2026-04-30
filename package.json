@@ -12,9 +12,9 @@
     "contract:compile": "pnpm --filter contracts compile",
     "contract:deploy": "pnpm --filter contracts deploy",
     "setup": "bash scripts/setup.sh",
-    "test:storage": "npx tsx scripts/test-storage.ts",
+    "test:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
     "test:contracts": "pnpm --filter contracts test",
-    "setup:storage": "npx tsx scripts/test-storage.ts"
+    "setup:storage": "cd agents && npx tsx ../scripts/test-storage.ts"
   },
   "engines": {
     "node": ">=20.0.0",
