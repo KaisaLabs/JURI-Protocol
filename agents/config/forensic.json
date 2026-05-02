@@ -1,0 +1,6 @@
+{
+  "PrivateKeyPath": "/Users/xfajarr/Hackathon/open-agents/agents/config/private_forensic.pem",
+  "Peers": ["tls://127.0.0.1:9002", "tls://127.0.0.1:9003"],
+  "Listen": ["tls://0.0.0.0:9001"],
+  "api_port": 9091
+}

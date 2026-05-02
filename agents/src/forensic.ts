@@ -11,7 +11,7 @@ dotenv.config({ path: "../.env" });
 function getConfig(): AgentConfig {
   return {
     role: "forensic",
-    port: parseInt(process.env.AXL_PLAINTIFF_PORT || process.env.AGENT_PORT || "9001"),
+    port: 9091,
     address: process.env.PLAINTIFF_ADDRESS || process.env.AGENT_ADDRESS || "0xForensic...",
     privateKey: process.env.PLAINTIFF_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001",
     llmBaseUrl: process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1",

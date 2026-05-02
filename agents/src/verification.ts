@@ -11,7 +11,7 @@ function getConfig(): AgentConfig {
   const useZGCompute = !!process.env.ZG_SERVICE_URL && !!process.env.ZG_API_SECRET;
   return {
     role: "verification",
-    port: parseInt(process.env.AXL_JUDGE_PORT || process.env.AGENT_PORT || "9003"),
+    port: 9093,
     address: process.env.JUDGE_ADDRESS || process.env.AGENT_ADDRESS || "0xVerifier...",
     privateKey: process.env.JUDGE_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000003",
     llmBaseUrl: useZGCompute ? process.env.ZG_SERVICE_URL! : (process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1"),

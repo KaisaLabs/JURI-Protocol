@@ -1,0 +1,6 @@
+{
+  "PrivateKeyPath": "/Users/xfajarr/Hackathon/open-agents/agents/config/private_analysis.pem",
+  "Peers": ["tls://127.0.0.1:9001", "tls://127.0.0.1:9003"],
+  "Listen": ["tls://0.0.0.0:9002"],
+  "api_port": 9092
+}
