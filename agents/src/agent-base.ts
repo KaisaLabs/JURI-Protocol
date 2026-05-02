@@ -76,14 +76,22 @@ export abstract class BaseAgent {
     return this.transport.getPeers();
   }
 
-  async sendTo(target: AgentRole, type: string, content: string, evidenceRefs: string[] = []): Promise<boolean> {
+  async sendTo(target: AgentRole, type: string, content: string, evidenceRefs: string[] = [], retries = 5): Promise<boolean> {
     const msg: AgentMessage = {
       type: type as AgentMessage["type"], caseId: this.currentCase?.id || 1,
       from: this.config.role, to: target, content, evidenceRefs, timestamp: Date.now(),
     };
     const hash = ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify({ ...msg, signature: undefined })));
     msg.signature = await this.signer.signMessage(ethers.getBytes(hash));
-    return this.transport.sendMessage(target, msg);
+
+    for (let i = 0; i < retries; i++) {
+      const ok = await this.transport.sendMessage(target, msg);
+      if (ok) return true;
+      this.log("Retry " + (i+1) + "/" + retries + " sending to " + target);
+      await this.sleep(1000 * (i + 1));
+    }
+    this.log("⚠️  Failed to send " + type + " to " + target + " after " + retries + " retries");
+    return false;
   }
 
   async waitForMessage(type: string, fromRole?: AgentRole, timeoutMs = 120000): Promise<AgentMessage> {

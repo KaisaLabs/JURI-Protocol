@@ -38,6 +38,13 @@ class DefendantAgent extends BaseAgent {
   async start(): Promise<void> {
     this.log("🛡️  Defendant Agent starting...");
     await this.connect();
+    while (true) {
+      const peers = await this.transport.getPeers();
+      if (peers.length >= 2) break;
+      this.log("Waiting for peers... (" + peers.length + "/2)");
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    this.log("All peers ready: " + (await this.transport.getPeers()).join(", "));
 
     // Wait for CASE_CREATED
     const caseMsg = await this.waitForMessage("CASE_CREATED", undefined, 120000);

@@ -28,7 +28,7 @@ function getConfig(): AgentConfig {
       : process.env.CUSTOM_LLM_KEY || process.env.OPENAI_API_KEY || "",
     llmModel: useZGCompute
       ? "qwen/qwen-2.5-7b-instruct"
-      : process.env.CUSTOM_LLM_MODEL || "glm-5",
+      : process.env.CUSTOM_LLM_MODEL || "asi1",
     zgIndexerUrl: process.env.ZG_STORAGE_INDEXER || "https://indexer-storage-testnet-turbo.0g.ai",
     zgKvNodeUrl: process.env.ZG_KV_NODE || "http://3.101.147.150:6789",
     zgRpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
@@ -65,6 +65,13 @@ class JudgeAgent extends BaseAgent {
     this.log("👨‍⚖️  Judge Agent starting...");
     this.log(`   LLM: ${this.config.llmModel} @ ${this.config.llmBaseUrl}`);
     await this.connect();
+    while (true) {
+      const peers = await this.transport.getPeers();
+      if (peers.length >= 2) break;
+      this.log("Waiting for peers... (" + peers.length + "/2)");
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    this.log("All peers ready: " + (await this.transport.getPeers()).join(", "));
 
     // Wait for closing statements from both sides
     this.log("⏳ Waiting for closing statements...");
