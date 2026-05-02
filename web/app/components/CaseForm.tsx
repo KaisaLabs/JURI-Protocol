@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CreateCaseRequest, RuntimeCase } from "@/lib/case-types";
+import { parseStakeInput } from "@/lib/stake";
 
 interface CaseFormProps {
   onCaseCreated: (caseData: CreateCaseRequest) => void;
@@ -17,13 +18,23 @@ function formatStatus(status: RuntimeCase["status"]) {
 export default function CaseForm({ onCaseCreated, currentCase, loading = false, error = null }: CaseFormProps) {
   const [dispute, setDispute] = useState("");
   const [stake, setStake] = useState("0.01");
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dispute.trim()) return;
 
-    onCaseCreated({ dispute: dispute.trim(), stake });
+    const parsedStake = parseStakeInput(stake);
+    if (!parsedStake.ok) {
+      setLocalError(parsedStake.error);
+      return;
+    }
+
+    setLocalError(null);
+    onCaseCreated({ dispute: dispute.trim(), stake: parsedStake.value });
   };
+
+  const displayError = localError ?? error;
 
   const activeCase = currentCase;
 
@@ -87,8 +98,13 @@ export default function CaseForm({ onCaseCreated, currentCase, loading = false, 
                 id="stake"
                 type="number"
                 value={stake}
-                onChange={(e) => setStake(e.target.value)}
-                step="0.01" min="0.001"
+                onChange={(e) => {
+                  setStake(e.target.value);
+                  if (localError) {
+                    setLocalError(null);
+                  }
+                }}
+                step="0.001" min="0.001"
                 inputMode="decimal"
                 autoComplete="off"
                 className="w-full bg-[#0a0a0f] border border-[#2a2a3a] rounded px-3 py-2 text-sm text-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#14141f]"
@@ -104,9 +120,9 @@ export default function CaseForm({ onCaseCreated, currentCase, loading = false, 
               </button>
             </div>
           </div>
-          {error ? (
+          {displayError ? (
             <p className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-300">
-              {error}
+              {displayError}
             </p>
           ) : null}
         </form>

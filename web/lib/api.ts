@@ -5,6 +5,7 @@ import type {
   HealthResponse,
   RuntimeCase,
 } from "./case-types";
+import { parseStakeInput } from "./stake";
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -27,9 +28,17 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function createCase(input: CreateCaseRequest): Promise<CreateCaseResponse> {
+  const parsedStake = parseStakeInput(input.stake);
+  if (!parsedStake.ok) {
+    throw new Error(parsedStake.error);
+  }
+
   return readJson<CreateCaseResponse>("/api/case", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      stake: parsedStake.value,
+    }),
   });
 }
 

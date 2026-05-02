@@ -13,6 +13,22 @@ if (fs.existsSync(ep)) {
   }
 }
 
+if (!process.env.AGENT_CONTROL_TOKEN) {
+  process.env.AGENT_CONTROL_TOKEN = "agent-court-e2e-token";
+  console.log("[e2e] AGENT_CONTROL_TOKEN missing, using local fallback token.");
+}
+
+const missingContractEnv = ["CONTRACT_ADDRESS", "PLAINTIFF_KEY", "DEFENDANT_KEY", "JUDGE_KEY"]
+  .filter((name) => !process.env[name]);
+
+if (missingContractEnv.length) {
+  console.error(
+    `[e2e] Missing required contract env: ${missingContractEnv.join(", ")}. ` +
+      "Populate them in .env before running the smoke test.",
+  );
+  process.exit(1);
+}
+
 const procs = [];
 function st(label, script) {
   const p = exec(TSX + " " + script, {cwd:AGENTS, env:{...process.env, AGENT_TRANSPORT:"direct"}});
@@ -46,11 +62,15 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
   await new Promise(r=>setTimeout(r,4000));
 
   const d = "Will ETH exceed $3000 by June 2026?";
+  const stake = "0.01";
   console.log("\n📋 Case: " + d);
 
   let cid;
   try{
-    cid=(await(await fetch(API_URL+"/api/case",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({dispute:d})})).json()).caseId;
+    const createRes = await fetch(API_URL+"/api/case",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({dispute:d,stake})});
+    const created = await createRes.json();
+    if(!createRes.ok||!created?.caseId) throw new Error(created?.error||"Case creation failed");
+    cid=created.caseId;
     console.log("✅ Case #" + cid + "\n");
   }catch(e){console.log("⚠️",e.message);}
 
@@ -59,7 +79,12 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
     await new Promise(r=>setTimeout(r,3000));
     if(cid){try{
       const c=await(await fetch(API_URL+"/api/case/"+cid)).json();
-      if(c&&c.status==="RESOLVED"){console.log("\n⚖️  RESOLVED: "+(c.verdict?.result||"?")+"\n");if(c.verdict?.reasoning)console.log(c.verdict.reasoning.slice(0,500)+"\n");break;}
+      if(c?.status){
+        const payout = c.payout ? ` | payout=${c.payout.status}:${c.payout.path}` : "";
+        console.log(`[runtime] status=${c.status}${payout}`);
+      }
+      if(c&&c.status==="resolved"){console.log("\n⚖️  RESOLVED: "+(c.verdict?.result||"?")+"\n");if(c.verdict?.reasoning)console.log(c.verdict.reasoning.slice(0,500)+"\n");break;}
+      if(c&&c.status==="failed"){console.log("\n❌ FAILED\n");if(c.timeline?.length)console.log(c.timeline[c.timeline.length-1].message+"\n");break;}
     }catch{}}
   }
   console.log("\n🛑 Done.\n");

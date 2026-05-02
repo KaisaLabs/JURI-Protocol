@@ -43,30 +43,8 @@ export default function PayoutStatus({ caseData }: PayoutStatusProps) {
       </div>
 
       <div className="space-y-3">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Stake Pool</span>
-          <span className="text-gray-200 font-mono">
-            {stakePool === null ? `${caseData.stake} 0G x 2` : `${stakePool.toFixed(3)} 0G`}
-          </span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Judge Fee (10%)</span>
-          <span className="text-gray-200 font-mono">
-            {judgeFee === null ? "Unknown" : `${judgeFee.toFixed(3)} 0G`}
-          </span>
-        </div>
-
-        <hr className="border-[#2a2a3a]" />
-
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Winner Payout</span>
-          <span className="text-green-400 font-mono">
-            {winnerPayout === null ? "Unknown" : `${winnerPayout.toFixed(3)} 0G`}
-          </span>
-        </div>
-
         {payout ? (
-          <div className="mt-3 space-y-2 rounded border border-[#2a2a3a] bg-[#0a0a0f] p-3 text-sm">
+          <div className="space-y-2 rounded border border-[#2a2a3a] bg-[#0a0a0f] p-3 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-gray-500">Payout Runtime Status</span>
               <span className="text-gray-200">{formatPayoutLabel(payout.status)}</span>
@@ -91,21 +69,48 @@ export default function PayoutStatus({ caseData }: PayoutStatusProps) {
             {payout.error ? <p className="text-xs text-red-300">{payout.error}</p> : null}
           </div>
         ) : caseData.status === "resolved" ? (
-          <div className="mt-3 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded text-center">
+          <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded text-center">
             <span className="text-yellow-300 text-sm">Verdict is final, but no payout update has been reported yet.</span>
           </div>
         ) : caseData.status === "failed" ? (
-          <div className="mt-3 p-3 bg-red-500/5 border border-red-500/20 rounded text-center">
+          <div className="p-3 bg-red-500/5 border border-red-500/20 rounded text-center">
             <span className="text-red-300 text-sm">Case failed before payout execution could be reported.</span>
           </div>
         ) : (
-          <div className="mt-3 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded text-center">
+          <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded text-center">
             <span className="text-yellow-400 text-sm flex items-center justify-center gap-2">
               <span className="animate-spin">⏳</span>
               Waiting for verdict and payout updates...
             </span>
           </div>
         )}
+
+        <div className="rounded border border-[#2a2a3a] bg-[#0a0a0f] p-3 text-sm">
+          <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Estimate only</div>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Estimated Stake Pool</span>
+              <span className="text-gray-200 font-mono">
+                {stakePool === null ? `${caseData.stake} 0G x 2` : `${stakePool.toFixed(3)} 0G`}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Estimated Judge Fee (10%)</span>
+              <span className="text-gray-200 font-mono">
+                {judgeFee === null ? "Unknown" : `${judgeFee.toFixed(3)} 0G`}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Estimated Winner Payout</span>
+              <span className="text-green-400 font-mono">
+                {winnerPayout === null ? "Unknown" : `${winnerPayout.toFixed(3)} 0G`}
+              </span>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-gray-500">
+            These numbers are local estimates from the displayed stake and contract rules. The runtime status above is the authoritative payout signal.
+          </p>
+        </div>
 
         <div className="mt-4 text-[10px] text-gray-600 text-center">
           Settlement data is rendered directly from the orchestrator runtime.
