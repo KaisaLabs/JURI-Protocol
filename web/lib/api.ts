@@ -1,45 +1,53 @@
-/**
- * API client for Agent Court Orchestrator.
- * The orchestrator runs on port 4000 (configurable via API_PORT).
- */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+import type {
+  ApiErrorResponse,
+  CreateCaseRequest,
+  CreateCaseResponse,
+  HealthResponse,
+  RuntimeCase,
+} from "./case-types";
 
-export interface CaseInfo {
-  id: number;
-  dispute: string;
-  status: string;
-  verdict?: { result: string; reasoning: string };
-  messages: { role: string; content: string; timestamp: number }[];
-}
-
-export async function createCase(dispute: string): Promise<{ success: boolean; caseId: number }> {
-  const res = await fetch(`${API_BASE}/api/case`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dispute }),
+async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
   });
 
+  const body = (await res.json().catch(() => null)) as T | ApiErrorResponse | null;
+
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Failed to create case");
+    const error = body && typeof body === "object" && "error" in body ? body.error : "Request failed";
+    throw new Error(error);
   }
 
-  return res.json();
+  return body as T;
 }
 
-export async function getCase(caseId: number): Promise<CaseInfo | null> {
-  const res = await fetch(`${API_BASE}/api/case/${caseId}`);
-  if (!res.ok) return null;
-  return res.json();
+export function createCase(input: CreateCaseRequest): Promise<CreateCaseResponse> {
+  return readJson<CreateCaseResponse>("/api/case", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export async function getCases(): Promise<CaseInfo[]> {
-  const res = await fetch(`${API_BASE}/api/cases`);
-  if (!res.ok) return [];
-  return res.json();
+export async function getCase(caseId: number): Promise<RuntimeCase | null> {
+  try {
+    return await readJson<RuntimeCase>(`/api/case/${caseId}`);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Case not found") {
+      return null;
+    }
+    throw error;
+  }
 }
 
-export async function healthCheck(): Promise<{ status: string; transport: string }> {
-  const res = await fetch(`${API_BASE}/api/health`);
-  return res.json();
+export function getCases(): Promise<RuntimeCase[]> {
+  return readJson<RuntimeCase[]>("/api/cases");
+}
+
+export function healthCheck(): Promise<HealthResponse> {
+  return readJson<HealthResponse>("/api/health");
 }

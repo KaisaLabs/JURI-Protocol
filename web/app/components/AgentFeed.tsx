@@ -1,53 +1,65 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { CaseStatus } from "../page";
+import type { RuntimeCaseStatus, RuntimeTimelineEvent } from "@/lib/case-types";
 
 interface AgentFeedProps {
-  messages: { role: string; content: string; timestamp: number }[];
-  caseStatus: CaseStatus;
+  timeline: RuntimeTimelineEvent[];
+  caseStatus: RuntimeCaseStatus;
+  transport: "direct" | "axl";
+  error?: string | null;
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  PLAINTIFF: "text-blue-400",
-  DEFENDANT: "text-red-400",
-  JUDGE: "text-[#c9a84c]",
-  system: "text-gray-500",
+  plaintiff: "text-blue-400",
+  defendant: "text-red-400",
+  judge: "text-[#c9a84c]",
+  orchestrator: "text-gray-400",
 };
 
 const ROLE_ICONS: Record<string, string> = {
-  PLAINTIFF: "📢",
-  DEFENDANT: "🛡️",
-  JUDGE: "👨‍⚖️",
-  system: "⚙️",
+  plaintiff: "📢",
+  defendant: "🛡️",
+  judge: "👨‍⚖️",
+  orchestrator: "⚙️",
 };
 
-export default function AgentFeed({ messages, caseStatus }: AgentFeedProps) {
+function formatActor(actor: RuntimeTimelineEvent["actor"]) {
+  return actor.toUpperCase();
+}
+
+function formatValue(value: unknown): string {
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object" && value !== null) return JSON.stringify(value);
+  return String(value);
+}
+
+export default function AgentFeed({ timeline, caseStatus, transport, error = null }: AgentFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [timeline]);
 
-  if (messages.length === 0) return null;
+  const isLive = caseStatus !== "resolved" && caseStatus !== "failed";
 
   return (
     <div className="border border-[#2a2a3a] rounded-lg bg-[#14141f] overflow-hidden">
       <div className="px-4 py-3 border-b border-[#2a2a3a] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">💬</span>
-          <h3 className="font-semibold text-gray-200">Live Agent Feed</h3>
+          <h3 className="font-semibold text-gray-200">Runtime Timeline</h3>
         </div>
         <div className="flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
-              caseStatus === "ARBITRATION" ? "bg-green-400 animate-pulse" : "bg-gray-600"
+              isLive ? "bg-green-400 animate-pulse" : "bg-gray-600"
             }`}
           />
           <span className="text-xs text-gray-500">
-            {caseStatus === "ARBITRATION" ? "Live" : "Inactive"}
+            {isLive ? "Polling" : "Terminal"}
           </span>
         </div>
       </div>
@@ -56,43 +68,73 @@ export default function AgentFeed({ messages, caseStatus }: AgentFeedProps) {
         ref={feedRef}
         className="p-4 space-y-3 max-h-96 overflow-y-auto"
       >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className="animate-fadeIn"
-            style={{ animationDelay: `${i * 0.1}s` }}
-          >
-            <div className="flex items-start gap-2">
-              <span className="text-sm mt-0.5">
-                {ROLE_ICONS[msg.role] || "💬"}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs font-semibold ${
-                      ROLE_COLORS[msg.role] || "text-gray-400"
-                    }`}
-                  >
-                    {msg.role}
-                  </span>
-                  <span className="text-[10px] text-gray-600">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </span>
+        {timeline.length === 0 ? (
+          <div className="rounded border border-dashed border-[#2a2a3a] bg-[#0a0a0f] px-4 py-8 text-center text-sm text-gray-500">
+            No runtime events yet. Once the orchestrator seeds the case, agent and on-chain updates will appear here.
+          </div>
+        ) : (
+          timeline.map((event, i) => (
+            <div
+              key={`${event.at}-${event.actor}-${event.type}-${i}`}
+              className="animate-fadeIn"
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-sm mt-0.5">
+                  {ROLE_ICONS[event.actor] || "💬"}
+                </span>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-xs font-semibold ${
+                        ROLE_COLORS[event.actor] || "text-gray-400"
+                      }`}
+                    >
+                      {formatActor(event.actor)}
+                    </span>
+                    <span className="rounded border border-[#2a2a3a] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+                      {event.type.replace(/_/g, " ")}
+                    </span>
+                    <span className="text-[10px] text-gray-600">
+                      {new Date(event.at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {event.message}
+                  </p>
+                  {event.data && Object.keys(event.data).length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {Object.entries(event.data).map(([key, value]) => (
+                        <span
+                          key={`${event.at}-${key}`}
+                          className="max-w-full truncate rounded border border-[#2a2a3a] bg-[#0a0a0f] px-2 py-1 text-[10px] text-gray-500"
+                          title={`${key}: ${formatValue(value)}`}
+                        >
+                          {key}: {formatValue(value)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                <p className="text-sm text-gray-300 mt-0.5 leading-relaxed">
-                  {msg.content}
-                </p>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
-      {caseStatus === "ARBITRATION" && (
+      <div className="px-4 py-2 border-t border-[#2a2a3a] bg-[#0a0a0f] space-y-1">
+        <p className="text-xs text-gray-600 flex items-center gap-2">
+          <span className={isLive ? "animate-spin" : ""}>⏳</span>
+          Transport: {transport === "axl" ? "Gensyn AXL" : "Direct local runtime"}
+        </p>
+        {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      </div>
+
+      {isLive && (
         <div className="px-4 py-2 border-t border-[#2a2a3a] bg-[#0a0a0f]">
           <p className="text-xs text-gray-600 flex items-center gap-2">
             <span className="animate-spin">⏳</span>
-            Agents communicating via Gensyn AXL (encrypted P2P)
+            Polling the orchestrator for runtime state changes until a terminal status is reported.
           </p>
         </div>
       )}

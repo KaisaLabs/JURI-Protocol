@@ -1,145 +1,153 @@
 #!/usr/bin/env node
-/**
- * ⚖️ Agent Court Orchestrator
- *
- * Coordinates the full arbitration flow:
- *   1. Seeds CASE_CREATED to all agents
- *   2. Monitors agent progress
- *   3. Collects final verdict
- *
- * Also exposes a REST API for the web UI.
- *
- * Usage: npx tsx src/orchestrator.ts
- */
-import { createTransport, type ITransport } from "./transport";
-import { ZgStorage } from "./storage";
-import type { AgentMessage, AgentRole } from "./types";
 import http from "http";
+import { ethers } from "ethers";
 import * as dotenv from "dotenv";
+import { ZgStorage } from "./storage";
+import { applyRuntimeUpdate, createRuntimeCase, type AgentRuntimeUpdate, type RuntimeCase, type RuntimeTimelineEvent } from "./case-runtime";
+import { getRoleAddress, getRolePrivateKey, getRuntimeConfig, validateDistinctRoleSigners } from "./runtime-config";
+import type { AgentControlCaseRequest, AgentRole } from "./types";
+
 dotenv.config({ path: "../.env" });
 
-const PORT = parseInt(process.env.API_PORT || "4000");
-const AGENT_PORTS: Record<AgentRole, number> = {
-  plaintiff: parseInt(process.env.AXL_PLAINTIFF_PORT || "9001"),
-  defendant: parseInt(process.env.AXL_DEFENDANT_PORT || "9002"),
-  judge: parseInt(process.env.AXL_JUDGE_PORT || "9003"),
-};
+const PORT = parseInt(process.env.API_PORT || "4000", 10);
+const CONTRACT_ABI = [
+  "function createCase(bytes32,address,address) payable returns (uint256)",
+  "function joinCase(uint256) payable",
+  "function getCaseCount() view returns (uint256)",
+];
 
 class Orchestrator {
-  private transport: ITransport;
-  private caseCounter = 0;
-  private activeCases: Map<number, {
-    dispute: string;
-    status: string;
-    verdict?: { result: string; reasoning: string };
-    messages: { role: string; content: string; timestamp: number }[];
-  }> = new Map();
+  private readonly runtimeConfig = getRuntimeConfig();
+  private readonly plaintiffKey = getRolePrivateKey("plaintiff");
+  private readonly defendantKey = getRolePrivateKey("defendant");
+  private readonly judgeKey = getRolePrivateKey("judge");
+  private readonly storage = new ZgStorage({
+    privateKey: this.plaintiffKey,
+    rpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
+    indexerUrl: process.env.ZG_STORAGE_INDEXER || "https://indexer-storage-testnet-turbo.0g.ai",
+    kvNodeUrl: process.env.ZG_KV_NODE || "http://3.101.147.150:6789",
+    network: "testnet",
+  });
+  private readonly provider = new ethers.JsonRpcProvider(process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai");
+  private readonly plaintiffSigner = new ethers.Wallet(this.plaintiffKey, this.provider);
+  private readonly defendantSigner = new ethers.Wallet(this.defendantKey, this.provider);
+  private readonly judgeAddress = getRoleAddress("judge");
+  private readonly contractAddress = process.env.CONTRACT_ADDRESS;
+  private readonly activeCases = new Map<number, RuntimeCase>();
 
   constructor() {
-    this.transport = createTransport(process.env.AGENT_TRANSPORT || "direct");
+    validateDistinctRoleSigners();
   }
 
   async start(): Promise<void> {
     console.log("⚖️  Agent Court Orchestrator starting...");
-
-    // Listen on our own port (for web UI API)
+    await this.storage.connect();
     await this.startAPIServer();
-
-    // Connect to transport to listen for agent messages
-    await this.transport.start("plaintiff", 9100); // orchestrator uses port 9100
-
-    this.transport.onMessage((msg, from) => {
-      this.handleAgentMessage(msg, from);
-    });
-
-    console.log("Orchestrator ready on port", PORT);
-    console.log("Web UI → http://localhost:3000");
-    console.log("API    → http://localhost:" + PORT);
+    console.log(`Orchestrator ready on http://127.0.0.1:${PORT}`);
   }
 
-  private handleAgentMessage(msg: AgentMessage, from: AgentRole): void {
-    const c = this.activeCases.get(msg.caseId);
-    if (!c) return;
+  async createCase(dispute: string, stake: string): Promise<{ caseId: number }> {
+    if (!this.contractAddress) {
+      throw new Error("CONTRACT_ADDRESS is required for real case creation");
+    }
 
-    c.messages.push({
-      role: from,
-      content: msg.content.slice(0, 500),
-      timestamp: msg.timestamp,
+    const contract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.plaintiffSigner);
+    const stakeWei = ethers.parseEther(stake);
+    const disputeStorage = await this.storage.storeValue(`dispute:draft:${Date.now()}:${ethers.hexlify(ethers.randomBytes(4))}`, dispute);
+
+    let runtimeCase = createRuntimeCase({
+      id: 0,
+      dispute,
+      stake,
+      transport: this.runtimeConfig.transportMode,
+      plaintiffAddress: getRoleAddress("plaintiff"),
+      defendantAddress: getRoleAddress("defendant"),
+      judgeAddress: this.judgeAddress,
+      disputeStorage,
     });
 
-    if (msg.type === "VERDICT_ISSUED") {
-      try {
-        c.verdict = JSON.parse(msg.content);
-        c.status = "RESOLVED";
-      } catch {}
-      console.log(`\n⚖️  CASE #${msg.caseId} RESOLVED: ${c.verdict?.result}`);
-      console.log(`   ${c.verdict?.reasoning?.slice(0, 200)}...\n`);
+    runtimeCase.status = "funding";
+    runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_created", `Creating case for dispute: ${dispute}`, { stake, disputeStorage }));
+
+    try {
+      const createTx = await contract.createCase(disputeStorage.ref, this.defendantSigner.address, this.judgeAddress, { value: stakeWei });
+      runtimeCase.onChain.create = { status: "submitted", txHash: createTx.hash };
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_create_submitted", "Plaintiff createCase transaction submitted", { txHash: createTx.hash }));
+      await createTx.wait();
+      runtimeCase.onChain.create = { status: "confirmed", txHash: createTx.hash };
+
+      const actualCaseId = Number(await contract.getCaseCount());
+      runtimeCase.id = actualCaseId;
+      this.activeCases.set(actualCaseId, runtimeCase);
+
+      const defendantContract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.defendantSigner);
+      const joinTx = await defendantContract.joinCase(runtimeCase.id, { value: stakeWei });
+      runtimeCase.onChain.join = { status: "submitted", txHash: joinTx.hash };
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_join_submitted", "Defendant joinCase transaction submitted", { txHash: joinTx.hash }));
+      await joinTx.wait();
+      runtimeCase.onChain.join = { status: "confirmed", txHash: joinTx.hash };
+      runtimeCase.status = "ready";
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_ready", "Case funded and ready to seed to agents"));
+
+      await this.notifyAgents(runtimeCase);
+      return { caseId: runtimeCase.id };
+    } catch (error) {
+      runtimeCase.status = "failed";
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_failed", "Case creation failed", { error: (error as Error).message }));
+      if (runtimeCase.id > 0) {
+        this.activeCases.set(runtimeCase.id, runtimeCase);
+      }
+      throw error;
     }
   }
 
-  /** Seed a new case to all agents */
-  async createCase(dispute: string): Promise<{ caseId: number }> {
-    this.caseCounter++;
-    const caseId = this.caseCounter;
+  private async notifyAgents(runtimeCase: RuntimeCase): Promise<void> {
+    const payload: AgentControlCaseRequest = { runtimeCase };
+    const failures: string[] = [];
 
-    this.activeCases.set(caseId, {
-      dispute,
-      status: "ARBITRATION",
-      messages: [],
-    });
-
-    console.log(`\n📋 CASE #${caseId} CREATED: "${dispute}"\n`);
-
-    // Send CASE_CREATED to each agent
-    const roles: AgentRole[] = ["plaintiff", "defendant", "judge"];
-    for (const role of roles) {
-      const msg: AgentMessage = {
-        type: "CASE_CREATED",
-        caseId,
-        from: "plaintiff", // orchestrator sends as plaintiff
-        to: role,
-        content: dispute,
-        evidenceRefs: [],
-        timestamp: Date.now(),
-      };
-
-      // Send to each agent's port via direct HTTP (orchestrator talks directly)
-      const port = AGENT_PORTS[role];
+    for (const role of ["plaintiff", "defendant", "judge"] as AgentRole[]) {
+      const port = this.runtimeConfig.controlPorts[role];
       try {
-        await fetch(`http://127.0.0.1:${port}/message`, {
+        const res = await fetch(`http://127.0.0.1:${port}/case`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ from: "orchestrator", message: msg }),
-          signal: AbortSignal.timeout(3000),
+          headers: {
+            "Content-Type": "application/json",
+            "x-agent-token": this.runtimeConfig.controlToken,
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(5000),
         });
-        console.log(`  → ${role} notified`);
-      } catch {
-        console.log(`  ⚠️  ${role} not reachable on port ${port}`);
+        if (!res.ok) {
+          failures.push(`${role}:${res.status}`);
+        }
+      } catch (error) {
+        failures.push(`${role}:${(error as Error).message}`);
       }
     }
 
-    return { caseId };
+    if (failures.length > 0) {
+      runtimeCase.status = "failed";
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "seed_failed", "Failed to seed one or more agents", { failures }));
+      throw new Error(`Agent seed failed: ${failures.join(", ")}`);
+    }
+
+    runtimeCase.status = "debating";
+    runtimeCase.timeline.push(this.makeTimeline("orchestrator", "seed_complete", "All agents received case seed"));
   }
 
-  /** Get case status */
-  getCase(caseId: number) {
+  getCase(caseId: number): RuntimeCase | null {
     return this.activeCases.get(caseId) || null;
   }
 
-  /** Get all cases */
-  getCases() {
-    return Array.from(this.activeCases.entries()).map(([id, c]) => ({
-      id,
-      ...c,
-    }));
+  getCases(): RuntimeCase[] {
+    return Array.from(this.activeCases.values()).sort((a, b) => b.id - a.id);
   }
 
-  // ── REST API Server ──
   private async startAPIServer(): Promise<void> {
     const server = http.createServer(async (req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-agent-token");
 
       if (req.method === "OPTIONS") {
         res.writeHead(204);
@@ -147,77 +155,105 @@ class Orchestrator {
         return;
       }
 
-      const url = new URL(req.url || "/", `http://localhost:${PORT}`);
+      const url = new URL(req.url || "/", `http://127.0.0.1:${PORT}`);
 
-      // POST /api/case — create new case
       if (req.method === "POST" && url.pathname === "/api/case") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", async () => {
-          try {
-            const { dispute } = JSON.parse(body);
-            if (!dispute) {
-              res.writeHead(400, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ error: "dispute required" }));
-              return;
-            }
-            const result = await this.createCase(dispute);
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, ...result }));
-          } catch (err) {
-            res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: (err as Error).message }));
+        const body = await this.readJsonBody(req);
+        try {
+          const dispute = typeof body.dispute === "string" ? body.dispute.trim() : "";
+          const stake = typeof body.stake === "string" ? body.stake.trim() : "";
+          if (!dispute || !stake) {
+            this.writeJson(res, 400, { error: "dispute and stake are required" });
+            return;
           }
+          const result = await this.createCase(dispute, stake);
+          this.writeJson(res, 200, { success: true, ...result });
+        } catch (error) {
+          this.writeJson(res, 500, { error: (error as Error).message });
+        }
+        return;
+      }
+
+      const runtimeMatch = url.pathname.match(/^\/api\/case\/(\d+)\/runtime$/);
+      if (req.method === "POST" && runtimeMatch) {
+        if (!this.hasValidControlToken(req)) {
+          this.writeJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+        const caseId = parseInt(runtimeMatch[1], 10);
+        const runtimeCase = this.getCase(caseId);
+        if (!runtimeCase) {
+          this.writeJson(res, 404, { error: "Case not found" });
+          return;
+        }
+        const update = await this.readJsonBody(req) as unknown as AgentRuntimeUpdate;
+        applyRuntimeUpdate(runtimeCase, update);
+        this.writeJson(res, 200, { ok: true });
+        return;
+      }
+
+      const caseMatch = url.pathname.match(/^\/api\/case\/(\d+)$/);
+      if (req.method === "GET" && caseMatch) {
+        const caseId = parseInt(caseMatch[1], 10);
+        const runtimeCase = this.getCase(caseId);
+        if (!runtimeCase) {
+          this.writeJson(res, 404, { error: "Case not found" });
+          return;
+        }
+        this.writeJson(res, 200, runtimeCase);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/cases") {
+        this.writeJson(res, 200, this.getCases());
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/health") {
+        this.writeJson(res, 200, {
+          status: "ok",
+          transport: this.runtimeConfig.transportMode,
+          storage: {
+            connected: this.storage.isConnected(),
+            network: "0G Galileo Testnet (Turbo)",
+          },
+          contractConfigured: Boolean(this.contractAddress),
+          activeCases: this.activeCases.size,
+          controlPorts: this.runtimeConfig.controlPorts,
         });
         return;
       }
 
-      // GET /api/case/:id — get case status
-      const caseMatch = url.pathname.match(/^\/api\/case\/(\d+)$/);
-      if (req.method === "GET" && caseMatch) {
-        const caseId = parseInt(caseMatch[1]);
-        const c = this.getCase(caseId);
-        if (!c) {
-          res.writeHead(404, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Case not found" }));
-          return;
-        }
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(c));
-        return;
-      }
-
-      // GET /api/cases — list all cases
-      if (req.method === "GET" && url.pathname === "/api/cases") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(this.getCases()));
-        return;
-      }
-
-      // GET /api/health — health check
-      if (req.method === "GET" && url.pathname === "/api/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({
-          status: "ok",
-          transport: this.transport.mode,
-          activeCases: this.caseCounter,
-          storage: "0G Galileo Testnet (Turbo)",
-          storage: {
-            connected: this.storage?.isConnected() || false,
-            network: "0G Galileo Testnet (Turbo)",
-          },
-        }));
-        return;
-      }
-
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not found" }));
+      this.writeJson(res, 404, { error: "Not found" });
     });
 
-    await new Promise<void>((resolve) => server.listen(PORT, () => resolve()));
+    await new Promise<void>((resolve) => server.listen(PORT, this.runtimeConfig.bindHost, () => resolve()));
+  }
+
+  private makeTimeline(actor: RuntimeTimelineEvent["actor"], type: string, message: string, data?: Record<string, unknown>): RuntimeTimelineEvent {
+    return { at: Date.now(), actor, type, message, data };
+  }
+
+  private async readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+    const chunks: string[] = [];
+    for await (const chunk of req) {
+      chunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf-8"));
+    }
+    return chunks.length > 0 ? JSON.parse(chunks.join("")) : {};
+  }
+
+  private writeJson(res: any, statusCode: number, body: unknown): void {
+    res.writeHead(statusCode, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(body));
+  }
+
+  private hasValidControlToken(req: http.IncomingMessage): boolean {
+    return req.headers["x-agent-token"] === this.runtimeConfig.controlToken;
   }
 }
 
-// ── Main ──
 const orchestrator = new Orchestrator();
-orchestrator.start().catch(console.error);
+orchestrator.start().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

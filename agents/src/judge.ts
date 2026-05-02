@@ -7,21 +7,24 @@
  * Execution: KeeperHub + 0G Chain contract
  */
 import { BaseAgent, type AgentConfig } from "./agent-base";
-import type { AgentMessage } from "./types";
 import * as dotenv from "dotenv";
+import { ethers } from "ethers";
+import { getControlPort, getRoleAddress, getRolePrivateKey, validateDistinctRoleSigners } from "./runtime-config";
+import type { RuntimePayoutStatus, RuntimeVerdict } from "./case-runtime";
 dotenv.config({ path: "../.env" });
 
 function getConfig(): AgentConfig {
   // Judge prefers 0G Compute if available, falls back to custom LLM
   const useZGCompute = !!process.env.ZG_SERVICE_URL && !!process.env.ZG_API_SECRET;
+  validateDistinctRoleSigners();
 
   return {
     role: "judge",
     port: parseInt(process.env.AXL_JUDGE_PORT || process.env.AGENT_PORT || "9003"),
-    address: process.env.JUDGE_ADDRESS || process.env.AGENT_ADDRESS || "0xJudg3...",
-    privateKey: process.env.JUDGE_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000003",
+    address: getRoleAddress("judge"),
+    privateKey: getRolePrivateKey("judge"),
     llmBaseUrl: useZGCompute
-      ? process.env.ZG_SERVICE_URL!
+      ? `${process.env.ZG_SERVICE_URL}/v1/proxy`
       : process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1",
     llmKey: useZGCompute
       ? process.env.ZG_API_SECRET!
@@ -34,6 +37,7 @@ function getConfig(): AgentConfig {
     zgRpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
     keeperhubKey: process.env.KEEPERHUB_API_KEY || "",
     contractAddress: process.env.CONTRACT_ADDRESS,
+    controlPort: getControlPort("judge"),
   };
 }
 
@@ -41,14 +45,6 @@ interface Evidence {
   plaintiff: { round: number; content: string; ref: string }[];
   defendant: { round: number; content: string; ref: string }[];
   dispute: string;
-}
-
-interface VerdictResult {
-  result: "PLAINTIFF" | "DEFENDANT" | "TIED";
-  reasoning: string;
-  reasoningRef: string;
-  computeProvider: string;
-  onChainTx?: string;
 }
 
 class JudgeAgent extends BaseAgent {
@@ -65,15 +61,14 @@ class JudgeAgent extends BaseAgent {
     this.log("👨‍⚖️  Judge Agent starting...");
     this.log(`   LLM: ${this.config.llmModel} @ ${this.config.llmBaseUrl}`);
     await this.connect();
-    while (true) {
-      const peers = await this.transport.getPeers();
-      if (peers.length >= 2) break;
-      this.log("Waiting for peers... (" + peers.length + "/2)");
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    this.log("All peers ready: " + (await this.transport.getPeers()).join(", "));
+
+    const runtimeCase = await this.waitForCaseSeed(120000);
+    this.caseId = runtimeCase.id;
+    this.evidence.dispute = runtimeCase.dispute;
+    await this.reportStatus("ready", `Judge seeded for case #${this.caseId}`);
 
     // Wait for closing statements from both sides
+    await this.reportStatus("awaiting_verdict", "Judge waiting for both closing statements");
     this.log("⏳ Waiting for closing statements...");
     const [plaintiffClose, defendantClose] = await Promise.all([
       this.waitForMessage("CLOSING_STATEMENT", "plaintiff", 120000),
@@ -93,21 +88,23 @@ class JudgeAgent extends BaseAgent {
 
     // Store verdict immutably
     await this.storeVerdictOnChain(verdict);
+    await this.reportVerdict(verdict, "resolved", `Judge stored verdict on-chain with status ${verdict.onChain.status}`);
 
     // Broadcast result
     await this.broadcastVerdict(verdict);
 
     // Execute payout
-    await this.executePayout(verdict);
+    const payout = await this.executePayout(verdict);
+    await this.reportPayout(payout, `Payout flow finished with status ${payout.status}`);
 
     this.log("✅ Judge: Case resolved!");
   }
 
   private async collectEvidence(): Promise<void> {
-    this.evidence = { plaintiff: [], defendant: [], dispute: "" };
+    this.evidence = { plaintiff: [], defendant: [], dispute: this.evidence.dispute };
 
     // Read dispute from KV
-    const dispute = await this.readStorageKey(`case:${this.caseId}:dispute`);
+    const dispute = await this.readStorageKey(this.getCurrentCase().disputeStorage.key);
     if (dispute) {
       this.evidence.dispute = dispute;
     }
@@ -134,7 +131,7 @@ class JudgeAgent extends BaseAgent {
     this.log(`Evidence: ${this.evidence.plaintiff.length}P / ${this.evidence.defendant.length}D arguments`);
   }
 
-  private async evaluateAndVerdict(): Promise<VerdictResult> {
+  private async evaluateAndVerdict(): Promise<RuntimeVerdict> {
     this.log("🧠 Evaluating evidence via LLM...");
 
     const pArgs = this.evidence.plaintiff
@@ -181,28 +178,28 @@ Evaluate and issue verdict.`;
     this.log(`📝 ${reasoning.slice(0, 300)}...`);
 
     // Store reasoning to 0G KV
-    let reasoningRef = "local";
-    try {
-      reasoningRef = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, reasoning }));
-      this.log(`Verdict stored to 0G KV: ${reasoningRef}`);
-    } catch {
-      this.log("⚠️  Verdict storage skipped (local mode)");
-    }
+    const reasoningStorage = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, reasoning }));
+    await this.reportEvidence("verdict", 0, reasoningStorage, `Judge stored verdict reasoning with status ${reasoningStorage.status}`);
 
-    return {
+    const verdict: RuntimeVerdict = {
       result,
       reasoning,
-      reasoningRef,
+      reasoningRef: reasoningStorage.ref,
       computeProvider: this.config.llmModel,
+      simulated: this.lastLLMMode === "simulated",
+      onChain: { status: "pending" },
     };
+    await this.reportVerdict(verdict, "resolved", `Judge evaluated case and produced ${result}`);
+    return verdict;
   }
 
-  private async storeVerdictOnChain(verdict: VerdictResult): Promise<void> {
+  private async storeVerdictOnChain(verdict: RuntimeVerdict): Promise<void> {
     this.log("📜 Storing verdict on-chain (0G Chain)...");
 
     if (!this.config.contractAddress) {
       this.log("  ⚠️  No contract address configured, skipping on-chain storage.");
       this.log("  Deploy AgentCourt.sol and set CONTRACT_ADDRESS in .env");
+      verdict.onChain = { status: "skipped", error: "CONTRACT_ADDRESS not configured" };
       return;
     }
 
@@ -214,24 +211,23 @@ Evaluate and issue verdict.`;
       );
 
       const verdictCode = verdict.result === "PLAINTIFF" ? 1 : verdict.result === "DEFENDANT" ? 2 : 3;
-      const reasoningHash = ethers.keccak256(ethers.toUtf8Bytes(verdict.reasoningRef));
-
-      const tx = await contract.resolveCase(this.caseId, verdictCode, reasoningHash);
+      const tx = await contract.resolveCase(this.caseId, verdictCode, verdict.reasoningRef);
       await tx.wait();
-      verdict.onChainTx = tx.hash;
+      verdict.onChain = { status: "confirmed", txHash: tx.hash };
       this.log(`  ✅ On-chain verdict stored! TX: ${tx.hash}`);
     } catch (err) {
+      verdict.onChain = { status: "failed", error: (err as Error).message };
       this.log(`  ⚠️  On-chain storage failed: ${(err as Error).message}`);
     }
   }
 
-  private async broadcastVerdict(verdict: VerdictResult): Promise<void> {
+  private async broadcastVerdict(verdict: RuntimeVerdict): Promise<void> {
     const payload = JSON.stringify({
       result: verdict.result,
       reasoning: verdict.reasoning,
       reasoningRef: verdict.reasoningRef,
       computeProvider: verdict.computeProvider,
-      onChainTx: verdict.onChainTx,
+      onChain: verdict.onChain,
     });
 
     this.log("📡 Broadcasting verdict...");
@@ -240,53 +236,54 @@ Evaluate and issue verdict.`;
     this.log("Verdict broadcast via transport ✅");
   }
 
-  private async executePayout(verdict: VerdictResult): Promise<void> {
-    if (verdict.result === "TIED") {
-      this.log("💰 Verdict TIED — no payout.");
-      return;
+  private async executePayout(verdict: RuntimeVerdict): Promise<RuntimePayoutStatus> {
+    if (!this.config.contractAddress) {
+      this.log("💰 Payout skipped: no contract configured.");
+      return { status: "skipped", path: "none", actor: "judge", note: "CONTRACT_ADDRESS not configured" };
     }
 
-    const winner = verdict.result === "PLAINTIFF" ? "plaintiff" : "defendant";
-    this.log(`💰 Executing payout to ${winner} via KeeperHub...`);
+    const provider = new ethers.JsonRpcProvider(this.config.zgRpcUrl);
+    const contractAbi = ["function withdrawWinnings(uint256)"];
 
-    // Try KeeperHub
-    if (this.config.keeperhubKey) {
-      try {
-        // Determine winner address from config
-        const winnerAddr =
-          winner === "plaintiff"
-            ? process.env.PLAINTIFF_ADDRESS || process.env.AGENT_ADDRESS
-            : process.env.DEFENDANT_ADDRESS || process.env.AGENT_ADDRESS;
+    try {
+      if (verdict.result === "TIED") {
+        const plaintiffKey = getRolePrivateKey("plaintiff");
+        const defendantKey = getRolePrivateKey("defendant");
 
-        if (winnerAddr) {
-          await this.keeperhub.executeTransfer({
-            to: winnerAddr,
-            amount: "0.018", // 0.02 stake minus 10% judge fee
-            token: "0G",
-          });
-          this.log("💰 KeeperHub payout executed ✅");
-          return;
-        }
-      } catch (err) {
-        this.log(`⚠️  KeeperHub payout failed: ${(err as Error).message}`);
+        const plaintiffTx = await new ethers.Contract(this.config.contractAddress, contractAbi, new ethers.Wallet(plaintiffKey, provider)).withdrawWinnings(this.caseId);
+        await plaintiffTx.wait();
+        const defendantTx = await new ethers.Contract(this.config.contractAddress, contractAbi, new ethers.Wallet(defendantKey, provider)).withdrawWinnings(this.caseId);
+        await defendantTx.wait();
+        return {
+          status: "succeeded",
+          path: "tie_refund",
+          actor: "judge",
+          txHash: `${plaintiffTx.hash},${defendantTx.hash}`,
+          note: "Plaintiff and defendant refunds submitted on-chain",
+        };
       }
-    }
 
-    // Try on-chain via contract
-    if (this.config.contractAddress) {
-      try {
-        const contract = new ethers.Contract(
-          this.config.contractAddress,
-          ["function resolveCase(uint256,uint8,bytes32)"],
-          this.signer
-        );
-        this.log("💰 Payout via on-chain contract (AgentCourt.sol) ✅");
-      } catch (err) {
-        this.log(`⚠️  On-chain payout failed: ${(err as Error).message}`);
-      }
-    }
+      const winner = verdict.result === "PLAINTIFF" ? "plaintiff" : "defendant";
+      const winnerKey = getRolePrivateKey(winner);
 
-    this.log("💰 Payout logged (demo mode) — on-chain resolution available via AgentCourt.sol");
+      const contract = new ethers.Contract(this.config.contractAddress, contractAbi, new ethers.Wallet(winnerKey, provider));
+      const tx = await contract.withdrawWinnings(this.caseId);
+      await tx.wait();
+      return {
+        status: "succeeded",
+        path: "winner_withdrawal",
+        actor: winner,
+        txHash: tx.hash,
+        note: `Winner withdrawal submitted on-chain by ${winner}`,
+      };
+    } catch (err) {
+      return {
+        status: "failed",
+        path: verdict.result === "TIED" ? "tie_refund" : "winner_withdrawal",
+        actor: verdict.result === "PLAINTIFF" ? "plaintiff" : verdict.result === "DEFENDANT" ? "defendant" : "judge",
+        error: (err as Error).message,
+      };
+    }
   }
 }
 

@@ -295,9 +295,12 @@ export class DirectTransport implements ITransport {
 // ===================== Factory =====================
 
 export function createTransport(mode?: string): ITransport {
-  const transportMode = mode || process.env.AGENT_TRANSPORT || "axl";
+  const transportMode = (mode || process.env.AGENT_TRANSPORT || "direct").toLowerCase();
   if (transportMode === "direct") {
     return new DirectTransport();
+  }
+  if (transportMode !== "axl") {
+    throw new Error(`Unsupported transport mode \"${transportMode}\". Use \"direct\" or \"axl\".`);
   }
   return new AxlTransport();
 }

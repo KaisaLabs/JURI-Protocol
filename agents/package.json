@@ -8,6 +8,7 @@
     "plaintiff": "tsx src/plaintiff.ts",
     "defendant": "tsx src/defendant.ts",
     "judge": "tsx src/judge.ts",
+    "typecheck": "tsc --noEmit",
     "all:direct": "AGENT_TRANSPORT=direct concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\"",
     "all:axl": "AGENT_TRANSPORT=axl concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\""
   },

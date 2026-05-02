@@ -1,4 +1,4 @@
-import type { Verdict } from "./agent-base";
+import type { RuntimeCase } from "./case-runtime";
 
 // ===================== AXL Message Protocol =====================
 
@@ -16,7 +16,7 @@ export interface AgentMessage {
   type: MessageType;
   caseId: number;
   from: AgentRole;
-  to: AgentRole;
+  to: AgentRole | "all";
   content: string;
   evidenceRefs: string[]; // 0G Storage KV keys
   timestamp: number;
@@ -24,6 +24,7 @@ export interface AgentMessage {
 }
 
 export type AgentRole = "plaintiff" | "defendant" | "judge";
+export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
 
 export interface AgentIdentity {
   role: AgentRole;
@@ -94,4 +95,8 @@ export interface AxlMessage {
   to: string;
   data: string;
   timestamp: number;
+}
+
+export interface AgentControlCaseRequest {
+  runtimeCase: RuntimeCase;
 }

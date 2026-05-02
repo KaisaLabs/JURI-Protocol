@@ -8,6 +8,7 @@
  */
 import { Indexer, KvClient, Batcher, MemData, getFlowContract } from "@0gfoundation/0g-ts-sdk";
 import { ethers } from "ethers";
+import type { StorageWriteResult } from "./case-runtime";
 
 export const ZG_NETWORKS = {
   testnet: {
@@ -67,30 +68,44 @@ export class ZgStorage {
 
   isConnected(): boolean { return this.connected; }
 
-  async storeEvidence(caseId: number, role: string, round: number, content: string): Promise<string> {
+  async storeEvidence(caseId: number, role: string, round: number, content: string): Promise<StorageWriteResult> {
     const key = `case:${caseId}:${role}:round:${round}`;
-    if (this.connected) await this.writeKV(key, content);
-    else this.log(`[local] ${key}`);
-    return key;
+    return this.storeValue(key, content);
   }
 
-  async storeDispute(caseId: number, dispute: string): Promise<string> {
+  async storeDispute(caseId: number, dispute: string): Promise<StorageWriteResult> {
     const key = `case:${caseId}:dispute`;
-    if (this.connected) await this.writeKV(key, dispute);
-    return key;
+    return this.storeValue(key, dispute);
   }
 
-  async storeVerdict(caseId: number, reasoning: string): Promise<string> {
+  async storeVerdict(caseId: number, reasoning: string): Promise<StorageWriteResult> {
     const key = `case:${caseId}:verdict:${Date.now()}`;
-    if (this.connected) await this.writeKV(key, reasoning);
-    return key;
+    return this.storeValue(key, reasoning);
+  }
+
+  async storeValue(key: string, value: string): Promise<StorageWriteResult> {
+    const ref = this.toStorageRef(key);
+    if (!this.connected) {
+      this.log(`[local] ${key}`);
+      return { status: "skipped", key, ref, error: "0G storage unavailable" };
+    }
+
+    try {
+      const txHash = await this.writeKV(key, value);
+      return { status: "written", key, ref, txHash };
+    } catch (error) {
+      const message = (error as Error).message;
+      this.log(`Write: ${message}`);
+      return { status: "failed", key, ref, error: message };
+    }
   }
 
   async readValue(key: string): Promise<string | null> {
     if (!this.connected) return null;
     try {
-      const kb = ethers.encodeBase64(new Uint8Array(Buffer.from(key, "utf-8")));
-      return await this.kvClient.getValue(this.streamId, kb) || null;
+      const kb = Uint8Array.from(Buffer.from(key, "utf-8"));
+      const value = await this.kvClient.getValue(this.streamId, kb);
+      return typeof value === "string" ? value : value == null ? null : JSON.stringify(value);
     } catch (e) { this.log(`Read: ${(e as Error).message}`); return null; }
   }
 
@@ -122,7 +137,7 @@ export class ZgStorage {
     if (batchErr) throw new Error(`Batch: ${batchErr}`);
 
     this.log(`KV: ${key} (${value.length}B)`);
-    return tx as string;
+    return typeof tx === "string" ? tx : JSON.stringify(tx);
   }
 
   toStorageRef(k: string): string { return ethers.keccak256(ethers.toUtf8Bytes(k)); }

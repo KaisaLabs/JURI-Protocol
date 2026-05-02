@@ -2,7 +2,7 @@
 
 **Built for ETHGlobal Open Agents 2026**
 
-Agent Court is a decentralized arbitration system where AI agents settle disputes on-chain. Three specialized agents — **Plaintiff**, **Defendant**, and **Judge** — communicate via encrypted P2P (Gensyn AXL), store evidence on 0G Storage, and the Judge uses 0G Compute's TEE-verified inference to issue fair verdicts. Payouts execute via KeeperHub.
+Agent Court is a decentralized arbitration system where AI agents settle disputes on-chain. Three specialized agents — **Plaintiff**, **Defendant**, and **Judge** — store evidence on 0G Storage, and the Judge uses 0G Compute's TEE-verified inference to issue fair verdicts. The current demo-ready default runtime is **direct local orchestration**: the web app talks to Next.js API routes, those routes proxy to the orchestrator, and the orchestrator coordinates the agents. `AGENT_TRANSPORT=axl` is still available when you want the AXL transport path.
 
 > 🏆 **Tracks:** 0G Autonomous Agents · Gensyn AXL · KeeperHub
 
@@ -60,9 +60,8 @@ User (Web UI)
 
 - Node.js 20+
 - pnpm 9+
-- Go 1.25+ (for AXL)
+- Go 1.25+ (only if you want to run AXL transport)
 - 0G testnet wallet (funded via [faucet.0g.ai](https://faucet.0g.ai))
-- KeeperHub API key (from [app.keeperhub.com](https://app.keeperhub.com))
 
 ### Setup
 
@@ -76,35 +75,91 @@ bash scripts/setup.sh
 
 # 3. Edit environment variables
 cp .env.example .env
-# Fill in your: PRIVATE_KEY, ZG_API_SECRET, KEEPERHUB_API_KEY, CUSTOM_LLM_URL
+# Fill in the required values listed below
 
 # 4. Install dependencies
 pnpm install
 ```
 
-### Start the system
+### Required environment variables
 
-You need **4 terminals** (or use `pnpm dev:all` with concurrently):
+The direct-default demo flow is real and depends on the orchestrator + agents being able to perform storage, compute, and on-chain steps.
+
+Required for the web/orchestrator path:
+
+- `AGENT_CONTROL_TOKEN`
+- `API_PORT` (defaults to `4000`)
+- `ORCHESTRATOR_URL` (defaults to `http://127.0.0.1:4000`)
+- `CONTRACT_ADDRESS`
+
+Required for 0G / chain integration:
+
+- `ZG_RPC_URL`
+- `ZG_STORAGE_INDEXER`
+- `ZG_KV_NODE`
+- `ZG_SERVICE_URL`
+- `ZG_API_SECRET`
+
+Required for distinct on-chain actors when `CONTRACT_ADDRESS` is set:
+
+- `PLAINTIFF_KEY`
+- `DEFENDANT_KEY`
+- `JUDGE_KEY`
+
+Optional runtime settings:
+
+- `AGENT_TRANSPORT=direct` for the local default
+- `AGENT_TRANSPORT=axl` if you want to run the AXL transport path
+- `PLAINTIFF_CONTROL_PORT`, `DEFENDANT_CONTROL_PORT`, `JUDGE_CONTROL_PORT`
+
+### Start the demo-ready runtime
+
+You need **5 terminals** for the default local demo:
 
 ```bash
-# Terminal 1: Start AXL nodes (3 nodes)
-bash scripts/run-axl.sh
-# Then in 3 separate terminals, run each AXL node command shown
+# Terminal 1: Orchestrator API + runtime state server
+pnpm agent:orchestrator
 
-# Terminal 2: Plaintiff Agent
+# Terminal 2: Plaintiff agent
 pnpm agent:plaintiff
 
-# Terminal 3: Defendant Agent
+# Terminal 3: Defendant agent
 pnpm agent:defendant
 
-# Terminal 4: Judge Agent
+# Terminal 4: Judge agent
 pnpm agent:judge
 
-# Terminal 5: Web UI
+# Terminal 5: Next.js web app
 pnpm dev
 ```
 
-Visit `http://localhost:3000` and create a dispute!
+Then visit `http://localhost:3000`.
+
+The browser does **not** call the orchestrator directly. It calls Next.js API routes under `web/app/api/*`, and those routes proxy requests to the orchestrator.
+
+### Start with AXL transport instead
+
+If you want the AXL path instead of the direct default:
+
+```bash
+# Terminal 1: start the AXL nodes
+bash scripts/run-axl.sh
+# Then run the node commands printed by that script
+
+# Separate terminals: orchestrator, plaintiff, defendant, judge, web
+AGENT_TRANSPORT=axl pnpm agent:orchestrator
+AGENT_TRANSPORT=axl pnpm agent:plaintiff
+AGENT_TRANSPORT=axl pnpm agent:defendant
+AGENT_TRANSPORT=axl pnpm agent:judge
+pnpm dev
+```
+
+### Honest demo notes
+
+- There is no frontend simulation fallback anymore.
+- If the orchestrator is down, misconfigured, or cannot reach storage / compute / contract dependencies, the UI will show the real error state.
+- If `CONTRACT_ADDRESS` is missing, case creation will fail because the orchestrator currently requires a real contract-backed create flow.
+- Verdict metadata and payout status are rendered from the runtime payload reported by the backend, including simulated compute fallback and on-chain skip/failure states when present.
 
 ---
 
@@ -132,7 +187,7 @@ agent-court/
 │   ├── app/
 │   │   ├── page.tsx         # Main dashboard
 │   │   ├── components/      # CaseForm, AgentFeed, VerdictCard, PayoutStatus
-│   │   └── api/case/        # API route for case creation
+│   │   └── api/             # Next.js proxy routes to orchestrator
 │   └── next.config.js
 ├── scripts/             # Setup & run scripts
 ├── docs/                # Architecture docs
