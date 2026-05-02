@@ -15,7 +15,7 @@ import { applyRuntimeUpdate, type AgentRuntimeUpdate, type RuntimeCase, type Run
 export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
 
 export interface AgentConfig {
-  role: "plaintiff" | "defendant" | "judge";
+  role: "forensic" | "analysis" | "verification";
   port: number;
   address: string;
   privateKey: string;
@@ -65,11 +65,12 @@ export abstract class BaseAgent {
   async connect(): Promise<void> {
     await this.startControlServer();
     await this.storage.connect();
-    await this.transport.start(this.config.role, this.config.port);
+    // Register message handler BEFORE starting transport so we never miss messages
     this.transport.onMessage((msg, from) => {
       this.messageQueue.push({ msg, from });
       this.onMessageReceived(msg, from);
     });
+    await this.transport.start(this.config.role, this.config.port);
     this.log(`Discovering peers...`);
     const discovered = await this.waitForPeers(30000);
     this.log(`Peers: ${discovered.join(", ") || "none"}. Ready.`);
@@ -96,7 +97,7 @@ export abstract class BaseAgent {
     return this.transport.getPeers();
   }
 
-  async sendTo(target: AgentRole, type: string, content: string, evidenceRefs: string[] = [], retries = 5): Promise<boolean> {
+  async sendTo(target: AgentRole, type: string, content: string, evidenceRefs: string[] = [], retries = 5, retryForever = false): Promise<boolean> {
     const msg: AgentMessage = {
       type: type as AgentMessage["type"], caseId: this.currentCase?.id || 1,
       from: this.config.role, to: target, content, evidenceRefs, timestamp: Date.now(),
@@ -104,14 +105,20 @@ export abstract class BaseAgent {
     const hash = ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify({ ...msg, signature: undefined })));
     msg.signature = await this.signer.signMessage(ethers.getBytes(hash));
 
-    for (let i = 0; i < retries; i++) {
+    let attempt = 0;
+    const maxAttempts = retryForever ? 60 : retries; // cap retryForever at 60 attempts (~10min)
+    while (true) {
       const ok = await this.transport.sendMessage(target, msg);
       if (ok) return true;
-      this.log("Retry " + (i+1) + "/" + retries + " sending to " + target);
-      await this.sleep(1000 * (i + 1));
+      attempt++;
+      if (attempt >= maxAttempts) {
+        this.log("⚠️  Failed to send " + type + " to " + target + " after " + attempt + " attempts");
+        return false;
+      }
+      const backoff = Math.min(retryForever ? 5000 * Math.pow(1.5, Math.min(attempt - 5, 10)) : 1000 * attempt, 30000);
+      this.log("🔄 Attempt " + attempt + "/" + (retryForever ? "∞" : retries) + " failed. Retrying in " + (backoff/1000).toFixed(1) + "s...");
+      await this.sleep(backoff);
     }
-    this.log("⚠️  Failed to send " + type + " to " + target + " after " + retries + " retries");
-    return false;
   }
 
   async waitForMessage(type: string, fromRole?: AgentRole, timeoutMs = 120000): Promise<AgentMessage> {

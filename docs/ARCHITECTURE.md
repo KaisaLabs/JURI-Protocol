@@ -74,7 +74,7 @@ Web UI ──(REST)──> Next.js API ──(REST)──> Orchestrator
 - HTTP API bridge for agent interaction
 - Topology-aware peer discovery
 
-### KeeperHub (Meaningful Integration)
-- KeeperHub client and integration hooks exist in the repo, but it is not the default payout path in the current demo runtime
-- MCP server for future workflow automation
+### KeeperHub (Available Integration)
+- KeeperHub client and integration hooks exist in the repo, but it is not the default active payout path in the current demo runtime
+- Intended for future workflow automation / sponsor-track integration work
 - API key authentication

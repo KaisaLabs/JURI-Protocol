@@ -18,7 +18,7 @@ if (!process.env.AGENT_CONTROL_TOKEN) {
   console.log("[e2e] AGENT_CONTROL_TOKEN missing, using local fallback token.");
 }
 
-const missingContractEnv = ["CONTRACT_ADDRESS", "PLAINTIFF_KEY", "DEFENDANT_KEY", "JUDGE_KEY"]
+const missingContractEnv = ["CONTRACT_ADDRESS", "FORENSIC_KEY", "ANALYSIS_KEY", "VERIFICATION_KEY"]
   .filter((name) => !process.env[name]);
 
 if (missingContractEnv.length) {
@@ -50,15 +50,15 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
   catch(e){console.log("❌",e.message);done();return;}
 
   console.log("👨‍⚖️  Judge...");
-  st("JUDGE","src/judge.ts");
+  st("VERIFICATION","src/verification.ts");
   await new Promise(r=>setTimeout(r,3000));
 
   console.log("📢 Plaintiff...");
-  st("PLAINTIFF","src/plaintiff.ts");
+  st("FORENSIC","src/forensic.ts");
   await new Promise(r=>setTimeout(r,2000));
 
   console.log("🛡️  Defendant...");
-  st("DEFENDANT","src/defendant.ts");
+  st("ANALYSIS","src/analysis.ts");
   await new Promise(r=>setTimeout(r,4000));
 
   const d = "Will ETH exceed $3000 by June 2026?";

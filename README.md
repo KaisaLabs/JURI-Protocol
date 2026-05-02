@@ -10,9 +10,8 @@ Agent Court is a decentralized arbitration system where AI agents settle dispute
 
 ## 🎥 Demo
 
-- **Live Demo:** [agent-court.vercel.app](https://agent-court.vercel.app) _(deploy after build)_
-- **Demo Video:** [YouTube (under 3 min)](https://youtube.com) _(record Day 4)_
-- **Contract:** `0x...` on [0G Galileo Testnet](https://chainscan-galileo.0g.ai)
+- Live demo URL, demo video, and deployed contract address are intentionally omitted from this repo snapshot until they are real and ready to share.
+- Operator note: fill in the live demo URL, demo video, and deployed contract address before hackathon submission or deployment handoff.
 
 ---
 
@@ -21,7 +20,14 @@ Agent Court is a decentralized arbitration system where AI agents settle dispute
 ```
 User (Web UI)
     │
-    ├── Creates dispute → 0G Storage KV
+    ▼
+Next.js API routes
+    │
+    ▼
+Orchestrator
+    │
+    ├── direct transport (default)
+    └── AXL transport (optional)
     │
     ▼
 ┌──────────────────────────────────────────┐
@@ -32,25 +38,22 @@ User (Web UI)
 │  │ Agent A  │  │ Agent B  │  │Agent C │ │
 │  │LLM:GLM-5 │  │LLM:GLM-5 │  │0G Comp.│ │
 │  └────┬─────┘  └────┬─────┘  └───┬────┘ │
-│       │              │            │      │
-│       └──────────────┼────────────┘      │
-│                      │                   │
-│           GENSYN AXL P2P NET             │
-│           (encrypted, 3 nodes)           │
-└──────────────────────────────────────────┘
-           │           │           │
-    ┌──────▼──┐  ┌─────▼────┐  ┌──▼──────┐
-    │0G Store │  │0G Compute│  │KeeperHub│
-    │KV + Log │  │  TEE ✓   │  │Payout   │
-    └─────────┘  └──────────┘  └─────────┘
-           │           │           │
-    ┌──────▼───────────▼───────────▼──────┐
-    │        0G CHAIN (EVM)               │
-    │   AgentCourt.sol — Staking + Verdict│
-    └─────────────────────────────────────┘
+└───────┼──────────────┼────────────┼──────┘
+        │              │            │
+   ┌────▼─────┐   ┌────▼─────┐  ┌──▼─────────┐
+   │0G Storage│   │0G Compute│  │ KeeperHub  │
+   │ KV + Log │   │  TEE ✓   │  │ optional / │
+   └────┬─────┘   └──────────┘  │ future     │
+        │                       │ automation │
+        └──────────────┬────────┴─────┬─────┘
+                       ▼              ▼
+          ┌──────────────────────────────────┐
+          │    0G CHAIN (EVM) / payouts      │
+          │ AgentCourt.sol + withdrawals     │
+          └──────────────────────────────────┘
 ```
 
-![Architecture Diagram](docs/ARCHITECTURE.png)
+See `docs/ARCHITECTURE.md` for the maintained architecture description.
 
 ---
 
@@ -212,7 +215,7 @@ agent-court/
 - ✅ Cross-node communication (different ports, distinct identities)
 
 ### 🏆 KeeperHub — Best Use of KeeperHub
-- ✅ `execute_transfer` for verdict payout
+- ✅ KeeperHub integration code remains in the repo for sponsor-track work and future payout automation
 - ✅ Clean code + documented architecture
 - ✅ Working demo with real execution flow
 
@@ -230,7 +233,7 @@ agent-court/
 | Storage        | **0G Storage** (KV + Log, TS SDK)                    |
 | Compute        | **0G Compute** (TEE-verified inference, qwen-2.5-7B) |
 | Communication  | **Gensyn AXL** (P2P encrypted, 3 nodes)              |
-| Execution      | **KeeperHub** (execute_transfer, MCP server)         |
+| Execution      | **0G Chain contract withdrawals** (direct runtime)   |
 | LLM (Agents)   | GLM-5 / qwen3.6-plus (custom OpenAI-compatible)      |
 | LLM (Judge)    | 0G Compute (qwen-2.5-7b-instruct, TEE-signed)       |
 | Frontend       | Next.js 15 + React 19 + Tailwind CSS v4              |
@@ -248,7 +251,7 @@ agent-court/
 - `withdrawWinnings()` — Winner claims payout
 - `withdrawJudgeFee()` — Judge claims 10% fee
 
-View on [0G Chainscan](https://chainscan-galileo.0g.ai)
+The repo expects a real Galileo deployment, but the contract address is not hardcoded in this README. Set `CONTRACT_ADDRESS` in your environment for the current deployment you want to run against.
 
 ---
 

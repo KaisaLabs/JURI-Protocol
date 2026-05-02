@@ -1,15 +1,12 @@
 {
-  "name": "agent-court",
+  "name": "juri-protocol",
   "version": "0.1.0",
   "private": true,
-  "description": "⚖️ Agent Court — Decentralized AI Agent Arbitration on 0G",
+  "description": "⚖️ JURI Protocol — DeFi Exploit Forensics & Cross-Chain Knowledge Base",
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "agent:orchestrator": "pnpm --filter agents orchestrator",
-    "agent:plaintiff": "pnpm --filter agents plaintiff",
-    "agent:defendant": "pnpm --filter agents defendant",
-    "agent:judge": "pnpm --filter agents judge",
     "agent:typecheck": "pnpm --filter agents typecheck",
     "contract:compile": "pnpm --filter contracts run compile",
     "contract:deploy": "pnpm --filter contracts run deploy",
@@ -18,7 +15,10 @@
     "test:contracts": "pnpm --filter contracts test",
     "setup:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
     "test:e2e": "cd agents && npx tsx ../scripts/e2e-test.ts",
-    "start": "cd agents && npx tsx ../scripts/e2e-test.ts"
+    "start": "cd agents && npx tsx ../scripts/e2e-test.ts",
+    "agent:forensic": "pnpm --filter agents run forensic",
+    "agent:analysis": "pnpm --filter agents run analysis",
+    "agent:verification": "pnpm --filter agents run verification"
   },
   "engines": {
     "node": ">=20.0.0",

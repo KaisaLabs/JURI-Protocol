@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "⚖️ Agent Court — Decentralized AI Arbitration",
+  title: "⚖️ JURI Protocol — DeFi Exploit Forensics",
   description:
-    "Decentralized arbitration for AI agents. Built on 0G, Gensyn AXL, and KeeperHub for ETHGlobal Open Agents 2026.",
+    "AI agents investigate DeFi exploits. Built on 0G, Gensyn AXL, and KeeperHub.. Built on 0G, Gensyn AXL, and KeeperHub for ETHGlobal Open Agents 2026.",
   openGraph: {
-    title: "Agent Court — Decentralized AI Arbitration",
-    description: "AI agents settle disputes. On-chain. Verifiable. Fair.",
+    title: "JURI Protocol — DeFi Exploit Forensics",
+    description: "DeFi exploit forensics. Cross-chain. Immutable.",
   },
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚖️</span>
               <h1 className="text-lg font-bold text-[#c9a84c] tracking-tight">
-                Agent Court
+                JURI Protocol
               </h1>
               <span className="text-xs px-2 py-0.5 rounded border border-[#2a2a3a] text-gray-500">
                 0G · AXL · KeeperHub

@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "orchestrator": "tsx src/orchestrator.ts",
-    "plaintiff": "tsx src/plaintiff.ts",
-    "defendant": "tsx src/defendant.ts",
-    "judge": "tsx src/judge.ts",
-    "typecheck": "tsc --noEmit",
-    "all:direct": "AGENT_TRANSPORT=direct concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\"",
-    "all:axl": "AGENT_TRANSPORT=axl concurrently \"pnpm plaintiff\" \"pnpm defendant\" \"pnpm judge\""
+    "forensic": "tsx src/forensic.ts",
+    "analysis": "tsx src/analysis.ts",
+    "verification": "tsx src/verification.ts",
+    "all:direct": "AGENT_TRANSPORT=direct concurrently \"pnpm forensic\" \"pnpm analysis\" \"pnpm verification\"",
+    "all:axl": "AGENT_TRANSPORT=axl concurrently \"pnpm forensic\" \"pnpm analysis\" \"pnpm verification\""
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.1",

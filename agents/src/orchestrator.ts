@@ -18,9 +18,9 @@ const CONTRACT_ABI = [
 
 class Orchestrator {
   private readonly runtimeConfig = getRuntimeConfig();
-  private readonly plaintiffKey = getRolePrivateKey("plaintiff");
-  private readonly defendantKey = getRolePrivateKey("defendant");
-  private readonly judgeKey = getRolePrivateKey("judge");
+  private readonly plaintiffKey = getRolePrivateKey("forensic");
+  private readonly defendantKey = getRolePrivateKey("analysis");
+  private readonly judgeKey = getRolePrivateKey("verification");
   private readonly storage = new ZgStorage({
     privateKey: this.plaintiffKey,
     rpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
@@ -31,7 +31,7 @@ class Orchestrator {
   private readonly provider = new ethers.JsonRpcProvider(process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai");
   private readonly plaintiffSigner = new ethers.Wallet(this.plaintiffKey, this.provider);
   private readonly defendantSigner = new ethers.Wallet(this.defendantKey, this.provider);
-  private readonly judgeAddress = getRoleAddress("judge");
+  private readonly judgeAddress = getRoleAddress("verification");
   private readonly contractAddress = process.env.CONTRACT_ADDRESS;
   private readonly activeCases = new Map<number, RuntimeCase>();
 
@@ -60,8 +60,8 @@ class Orchestrator {
       dispute,
       stake,
       transport: this.runtimeConfig.transportMode,
-      plaintiffAddress: getRoleAddress("plaintiff"),
-      defendantAddress: getRoleAddress("defendant"),
+      plaintiffAddress: getRoleAddress("forensic"),
+      defendantAddress: getRoleAddress("analysis"),
       judgeAddress: this.judgeAddress,
       disputeStorage,
     });
@@ -105,7 +105,7 @@ class Orchestrator {
     const payload: AgentControlCaseRequest = { runtimeCase };
     const failures: string[] = [];
 
-    for (const role of ["plaintiff", "defendant", "judge"] as AgentRole[]) {
+    for (const role of ["forensic", "analysis", "verification"] as AgentRole[]) {
       const port = this.runtimeConfig.controlPorts[role];
       try {
         const res = await fetch(`http://127.0.0.1:${port}/case`, {

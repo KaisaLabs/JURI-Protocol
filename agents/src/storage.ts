@@ -94,8 +94,9 @@ export class ZgStorage {
       const txHash = await this.writeKV(key, value);
       return { status: "written", key, ref, txHash };
     } catch (error) {
+      // Non-fatal: evidence can still be sent via transport message even if KV write fails
       const message = (error as Error).message;
-      this.log(`Write: ${message}`);
+      this.log(`⚠️ KV write failed for ${key}: ${message}`);
       return { status: "failed", key, ref, error: message };
     }
   }

@@ -23,7 +23,7 @@ export interface AgentMessage {
   signature?: string;
 }
 
-export type AgentRole = "plaintiff" | "defendant" | "judge";
+export type AgentRole = "forensic" | "analysis" | "verification";
 export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
 
 export interface AgentIdentity {
@@ -39,11 +39,11 @@ export interface CaseState {
   id: number;
   disputeQuestion: string;
   status: "PENDING" | "ARBITRATION" | "RESOLVED";
-  plaintiff: AgentIdentity;
-  defendant: AgentIdentity;
-  judge: AgentIdentity;
-  plaintiffArguments: EvidenceEntry[];
-  defendantArguments: EvidenceEntry[];
+  forensic: AgentIdentity;
+  analysis: AgentIdentity;
+  verification: AgentIdentity;
+  forensicArguments: EvidenceEntry[];
+  analysisArguments: EvidenceEntry[];
   verdict?: {
     result: "PLAINTIFF" | "DEFENDANT" | "TIED";
     reasoning: string;
