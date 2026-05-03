@@ -134,7 +134,7 @@ export default function ConnectWallet() {
             <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </button>
           {netOpen && (
-            <div className="absolute top-full mt-1.5 right-0 bg-[#11141e] border border-[#1e2234] rounded-lg shadow-xl z-50 min-w-[175px] overflow-hidden">
+            <div className="absolute top-full mt-1.5 right-0 bg-surface border border-border rounded-lg shadow-xl z-50 min-w-[175px] overflow-hidden">
               {(Object.entries(NETWORK_CONFIG) as [key: "testnet" | "mainnet", value: typeof NETWORK_CONFIG["testnet"]][]).map(([key, net]) => (
                 <button
                   key={key}
@@ -164,8 +164,8 @@ export default function ConnectWallet() {
             <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </button>
           {menuOpen && (
-            <div className="absolute top-full mt-1.5 right-0 bg-[#11141e] border border-[#1e2234] rounded-lg shadow-xl z-50 min-w-[190px] overflow-hidden">
-              <div className="px-3.5 py-2.5 text-[10px] text-gray-500 border-b border-[#1e2234]">
+            <div className="absolute top-full mt-1.5 right-0 bg-surface border border-border rounded-lg shadow-xl z-50 min-w-[190px] overflow-hidden">
+              <div className="px-3.5 py-2.5 text-[10px] text-gray-500 border-b border-border">
                 <p className="font-mono text-gray-300 text-xs break-all">{account}</p>
                 {balance && <p className="mt-1">{parseFloat(balance).toFixed(4)} 0G</p>}
                 {netInfo && <p className="mt-0.5">{netInfo.name}</p>}
@@ -186,12 +186,12 @@ export default function ConnectWallet() {
 
   return (
     <>
-      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModalOpen(true); }} className="px-4 py-2 bg-[#e8734a] text-black font-semibold rounded-lg hover:bg-[#f08c6a] transition-all text-sm cursor-pointer">
+      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModalOpen(true); }} className="px-4 py-2 bg-primary text-black font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm cursor-pointer">
         Connect Wallet
       </button>
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setModalOpen(false)}>
-          <div className="bg-[#11141e] border border-[#1e2234] rounded-xl p-6 max-w-sm w-full space-y-4 animate-fadeIn" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full space-y-4 animate-fadeIn" onClick={e => e.stopPropagation()}>
             <div className="text-center">
               <span className="text-4xl">🔗</span>
               <h3 className="text-lg font-bold text-white mt-2">Connect Wallet</h3>
@@ -200,7 +200,7 @@ export default function ConnectWallet() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); connect(); }}
-              className="w-full p-4 rounded-xl border border-[#1e2234] hover:border-[#e8734a]/40 bg-[#0b0d14] text-left hover:bg-[#e8734a]/5 transition-all cursor-pointer"
+              className="w-full p-4 rounded-xl border border-border hover:border-primary/40 bg-surface-alt text-left hover:bg-primary/5 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🦊</span>
@@ -209,7 +209,7 @@ export default function ConnectWallet() {
             </button>
             {error && <p className="text-xs text-red-400 text-center bg-red-500/5 border border-red-500/10 rounded-lg p-2">{error}</p>}
             <div className="text-[10px] text-gray-600 text-center space-y-0.5">
-              <p>Need testnet tokens? <a href="https://faucet.0g.ai" target="_blank" className="text-[#e8734a] hover:underline">faucet.0g.ai</a></p>
+              <p>Need testnet tokens? <a href="https://faucet.0g.ai" target="_blank" className="text-primary hover:underline">faucet.0g.ai</a></p>
             </div>
             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModalOpen(false); }} className="text-xs text-gray-500 hover:text-gray-300 w-full text-center cursor-pointer">Cancel</button>
           </div>
