@@ -1,197 +1,250 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+const TOTAL = 9;
 
 const slides = [
   {
-    id: 0,
-    title: "JURI Protocol",
-    subtitle: "DeFi Exploit Forensics & Cross-Chain Knowledge Base",
-    tag: "ETHGlobal Open Agents 2026",
-    bg: "from-[#0a0a0f] via-[#1a1020] to-[#0a0a0f]",
+    title: "JURI",
+    titleAccent: "Protocol",
+    tagline: "DeFi Exploit Forensics & Cross-Chain Knowledge Base",
+    badge: "ETHGlobal Open Agents 2026",
+    gradient: "from-slate-950 via-[#0d0d1a] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(201,168,76,0.15)]",
   },
   {
-    id: 1,
-    title: "The Problem",
     stat: "$3,000,000,000+",
     statLabel: "Lost to DeFi exploits since 2024",
-    bullets: [
-      "No standardized post-mortem process",
-      "Evidence scattered across Twitter & Discord",
-      "Same exploits repeat — protocols never learn",
-      "Cross-chain attacks even harder to trace",
+    title: "The",
+    titleAccent: "Problem",
+    gradient: "from-slate-950 via-[#1a0a0a] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(239,68,68,0.12)]",
+    cards: [
+      { icon: "🔁", text: "Same exploits repeat — protocols never learn" },
+      { icon: "🐦", text: "Post-mortems scattered across Twitter & Discord" },
+      { icon: "⏰", text: "Weeks of manual investigation per incident" },
+      { icon: "🔗", text: "Cross-chain attacks nearly impossible to trace" },
     ],
-    bg: "from-[#0a0a0f] via-[#200808] to-[#0a0a0f]",
-    color: "text-red-400",
   },
   {
-    id: 2,
-    title: "After Every Exploit...",
-    subtitle: "This is what happens now",
-    points: [
-      { emoji: "🐦", text: "Twitter wars — protocol vs attacker vs community" },
-      { emoji: "📋", text: "No standardized evidence collection" },
-      { emoji: "⏰", text: "Weeks of manual investigation" },
-      { emoji: "🔁", text: "Same attack vector exploits another protocol next week" },
+    title: "After Every",
+    titleAccent: "Exploit",
+    subtitle: "There is no formal resolution process",
+    gradient: "from-slate-950 via-[#151008] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(251,191,36,0.08)]",
+    timeline: [
+      "Protocol gets drained",
+      "Twitter war begins",
+      "Evidence lost in DMs",
+      "Manual investigation (weeks)",
+      "Another protocol hit by same vector",
     ],
-    bg: "from-[#0a0a0f] via-[#201808] to-[#0a0a0f]",
   },
   {
-    id: 3,
-    title: "Introducing JURI Protocol",
-    subtitle: "Exploit Once. Learn Forever.",
-    points: [
-      { emoji: "🔍", text: "Forensic Agent traces fund flows across chains" },
-      { emoji: "📊", text: "Analysis Agent classifies attack vector & severity" },
-      { emoji: "✅", text: "Verification Agent cross-references & publishes post-mortem" },
+    title: "Introducing",
+    titleAccent: "JURI Protocol",
+    tagline: "Exploit Once. Learn Forever.",
+    gradient: "from-slate-950 via-[#081508] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(34,197,94,0.10)]",
+    agents: [
+      { emoji: "🔍", role: "Forensic", desc: "Traces fund flows. Collects on-chain evidence. Stores immutably on 0G." },
+      { emoji: "📊", role: "Analysis", desc: "Classifies attack vector. Scores severity. Matches historical patterns." },
+      { emoji: "✅", role: "Verification", desc: "Cross-references findings. Publishes post-mortem. TEE-verified." },
     ],
-    bg: "from-[#0a0a0f] via-[#102008] to-[#0a0a0f]",
-    color: "text-green-400",
   },
   {
-    id: 4,
-    title: "How It Works",
+    title: "How It",
+    titleAccent: "Works",
+    gradient: "from-slate-950 via-[#0a1020] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(96,165,250,0.08)]",
     steps: [
-      "1. Exploit detected → JURI activates",
-      "2. Forensic Agent collects on-chain evidence → 0G Storage",
-      "3. Analysis Agent classifies attack → matches historical patterns",
-      "4. Verification Agent cross-references → 0G Compute TEE",
-      "5. Immutable post-mortem published → 0G Chain",
-      "6. Every protocol learns → same exploit never works twice",
+      { num: "01", text: "Exploit detected — JURI activates" },
+      { num: "02", text: "Forensic Agent traces funds → 0G Storage KV" },
+      { num: "03", text: "Analysis Agent classifies → matches RAG database" },
+      { num: "04", text: "Verification Agent cross-checks → 0G Compute TEE" },
+      { num: "05", text: "Immutable post-mortem published → 0G Storage Log" },
+      { num: "06", text: "Every protocol learns — same exploit never works twice" },
     ],
-    bg: "from-[#0a0a0f] via-[#101830] to-[#0a0a0f]",
   },
   {
-    id: 5,
     title: "Architecture",
-    bg: "from-[#0a0a0f] via-[#101020] to-[#0a0a0f]",
-  },
-  {
-    id: 6,
-    title: "Built With",
-    bg: "from-[#0a0a0f] via-[#181010] to-[#0a0a0f]",
-  },
-  {
-    id: 7,
-    title: "Why JURI",
-    bullets: [
-      "Immutable evidence — 0G Storage ensures tamper-proof audit trail",
-      "Verifiable reasoning — 0G Compute TEE-signed inference",
-      "Encrypted P2P — Gensyn AXL for agent communication",
-      "Auto-execution — KeeperHub for on-chain actions",
-      "Cross-chain — traces funds across EVM + alt chains",
-      "Public good — open knowledge base for all protocols",
+    gradient: "from-slate-950 via-[#0d0d1a] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(201,168,76,0.10)]",
+    arch: [
+      { layer: "INPUT", items: ["Exploit Report", "On-chain Event", "Protocol Alert"], color: "border-slate-600" },
+      { layer: "AGENTS", items: ["🔍 Forensic", "📊 Analysis", "✅ Verification"], color: "border-[#c9a84c]/40" },
+      { layer: "COMMUNICATION", items: ["Gensyn AXL · Encrypted P2P"], color: "border-purple-500/40" },
+      { layer: "STORAGE & COMPUTE", items: ["0G Storage KV + Log", "0G Compute TEE"], color: "border-green-500/40" },
+      { layer: "EXECUTION", items: ["KeeperHub · Auto-publish", "0G Chain · Immutable Verdict"], color: "border-orange-500/40" },
     ],
-    bg: "from-[#0a0a0f] via-[#1a1020] to-[#0a0a0f]",
-    color: "text-[#c9a84c]",
   },
   {
-    id: 8,
-    title: "JURI Protocol",
-    subtitle: "Exploit Once. Learn Forever.",
-    bg: "from-[#0a0a0f] via-[#102020] to-[#0a0a0f]",
+    title: "Built",
+    titleAccent: "With",
+    gradient: "from-slate-950 via-[#100d14] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(168,85,247,0.08)]",
+    sponsors: [
+      { name: "0G Chain", sub: "EVM · Galileo Testnet", color: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5" },
+      { name: "0G Storage", sub: "KV + Log + File", color: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5" },
+      { name: "0G Compute", sub: "TEE-Verified Inference", color: "text-sky-400 border-sky-500/20 bg-sky-500/5" },
+      { name: "Gensyn AXL", sub: "P2P Encrypted Mesh", color: "text-purple-400 border-purple-500/20 bg-purple-500/5" },
+      { name: "KeeperHub", sub: "On-Chain Execution", color: "text-orange-400 border-orange-500/20 bg-orange-500/5" },
+      { name: "Solidity", sub: "Smart Contracts", color: "text-gray-400 border-gray-500/20 bg-gray-500/5" },
+    ],
+  },
+  {
+    title: "Why",
+    titleAccent: "JURI",
+    gradient: "from-slate-950 via-[#120d18] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(201,168,76,0.12)]",
+    reasons: [
+      { icon: "🔒", text: "Immutable evidence — 0G Storage tamper-proof audit trail" },
+      { icon: "🧠", text: "Verifiable reasoning — 0G Compute TEE-signed inference" },
+      { icon: "🔐", text: "Encrypted P2P — Gensyn AXL agent communication" },
+      { icon: "⚡", text: "Auto-execution — KeeperHub on-chain actions" },
+      { icon: "🌐", text: "Cross-chain — traces funds across EVM + alt chains" },
+      { icon: "📚", text: "Public good — open knowledge base for all protocols" },
+    ],
+  },
+  {
+    cta: true,
+    title: "JURI",
+    titleAccent: "Protocol",
+    tagline: "Exploit Once. Learn Forever.",
+    gradient: "from-slate-950 via-[#0d1420] to-slate-950",
+    accentGlow: "shadow-[0_0_120px_rgba(201,168,76,0.18)]",
+    tracks: ["0G Autonomous Agents", "Gensyn AXL", "KeeperHub"],
   },
 ];
 
 export default function PitchPage() {
   const [slide, setSlide] = useState(0);
-  const total = slides.length;
+  const [animKey, setAnimKey] = useState(0);
+
+  const next = useCallback(() => { setSlide(s => Math.min(s + 1, TOTAL - 1)); setAnimKey(k => k + 1); }, []);
+  const prev = useCallback(() => { setSlide(s => Math.max(s - 1, 0)); setAnimKey(k => k + 1); }, []);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === " ") next();
+      if (e.key === "ArrowLeft") prev();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [next, prev]);
+
   const s = slides[slide];
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br ${s.bg} flex flex-col items-center justify-center p-8 transition-all duration-700`}
-      onClick={() => setSlide((s) => Math.min(s + 1, total - 1))}
+      className={`min-h-screen bg-gradient-to-br ${s.gradient} flex items-center justify-center p-6 md:p-12 relative overflow-hidden transition-all duration-1000`}
+      onClick={next}
     >
-      {/* Nav dots */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 flex gap-2 z-50">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={(e) => { e.stopPropagation(); setSlide(i); }}
-            className={`w-2.5 h-2.5 rounded-full transition-all ${i === slide ? "bg-[#c9a84c] w-6" : "bg-gray-600 hover:bg-gray-400"}`}
-          />
-        ))}
-      </div>
-      <div className="fixed top-4 right-4 text-gray-500 text-xs z-50">{slide + 1} / {total}</div>
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-gray-600 text-xs z-50">Click anywhere or use ← → keys to navigate</div>
+      {/* Background glow */}
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] opacity-20 transition-all duration-1000 ${s.accentGlow}`} />
 
-      {/* Slide 0 */}
-      {s.id === 0 && (
-        <div className="text-center space-y-8 animate-fadeIn">
-          <div className="inline-block px-4 py-1.5 rounded-full border border-[#c9a84c]/30 bg-[#c9a84c]/5 text-[#c9a84c] text-sm mb-4">{s.tag}</div>
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tight">
-            <span className="text-white">JURI</span>{" "}
-            <span className="text-[#c9a84c]">Protocol</span>
+      {/* Top bar */}
+      <nav className="fixed top-0 left-0 right-0 h-12 flex items-center justify-between px-6 z-50 bg-black/20 backdrop-blur-sm border-b border-white/5">
+        <span className="text-sm font-bold tracking-wider text-white/60">JURI PROTOCOL</span>
+        <div className="flex gap-1.5">
+          {Array.from({ length: TOTAL }).map((_, i) => (
+            <button
+              key={i}
+              onClick={(e) => { e.stopPropagation(); setSlide(i); setAnimKey(k => k + 1); }}
+              className={`h-1 rounded-full transition-all duration-500 ${i === slide ? "w-8 bg-[#c9a84c]" : "w-4 bg-white/20 hover:bg-white/40"}`}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-white/30 font-mono">{String(slide + 1).padStart(2, "0")} / {String(TOTAL).padStart(2, "0")}</span>
+      </nav>
+
+      {/* Slide 0: Hero */}
+      {slide === 0 && (
+        <div key={animKey} className="text-center space-y-10 animate-slideUp max-w-3xl">
+          <span className="inline-block text-xs tracking-[0.3em] uppercase text-[#c9a84c]/60 border border-[#c9a84c]/20 rounded-full px-5 py-1.5 mb-4">{s.badge}</span>
+          <h1 className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">
+            <span className="text-white">{s.title}</span>
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#e8d48b]">{s.titleAccent}</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">{s.subtitle}</p>
-          <div className="flex items-center justify-center gap-4 pt-8">
-            <span className="text-green-400 text-sm font-mono">0G</span>
-            <span className="text-gray-700">·</span>
-            <span className="text-purple-400 text-sm font-mono">Gensyn AXL</span>
-            <span className="text-gray-700">·</span>
-            <span className="text-orange-400 text-sm font-mono">KeeperHub</span>
-          </div>
-        </div>
-      )}
-
-      {/* Slide 1 */}
-      {s.id === 1 && (
-        <div className="max-w-3xl space-y-8 animate-fadeIn">
-          <h2 className="text-6xl font-bold text-white">The <span className="text-red-400">Problem</span></h2>
-          <div className="text-center py-6">
-            <span className="text-8xl font-bold text-red-400">{s.stat}</span>
-            <p className="text-gray-500 mt-2 text-lg">{s.statLabel}</p>
-          </div>
-          <ul className="space-y-3">
-            {s.bullets?.map((b, i) => (
-              <li key={i} className="flex items-start gap-3 text-gray-300 text-lg"><span className="text-red-400 mt-1">✦</span> {b}</li>
+          <p className="text-xl md:text-2xl text-white/40 font-light max-w-xl mx-auto">{s.tagline}</p>
+          <div className="flex items-center justify-center gap-3 pt-6">
+            {["0G", "Gensyn AXL", "KeeperHub"].map((sp) => (
+              <span key={sp} className="text-xs text-white/30 font-mono border border-white/10 rounded px-3 py-1">{sp}</span>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
-      {/* Slide 2 */}
-      {s.id === 2 && (
-        <div className="max-w-3xl space-y-10 animate-fadeIn">
-          <h2 className="text-6xl font-bold text-white">{s.title}</h2>
-          <p className="text-gray-500 text-lg">{s.subtitle}</p>
-          <div className="grid gap-4">
-            {s.points?.map((p, i) => (
-              <div key={i} className="flex items-center gap-4 p-5 bg-white/5 rounded-lg border border-white/10 hover:border-[#c9a84c]/30 transition-colors">
-                <span className="text-3xl">{p.emoji}</span>
-                <span className="text-gray-300 text-lg">{p.text}</span>
+      {/* Slide 1: Problem */}
+      {slide === 1 && (
+        <div key={animKey} className="max-w-4xl w-full space-y-10 animate-slideUp">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-5xl md:text-7xl font-black text-white tracking-tight">{s.title}</h2>
+            <span className="text-5xl md:text-7xl font-black text-red-500 tracking-tight">{s.titleAccent}</span>
+          </div>
+          <div className="text-center p-10 rounded-2xl bg-red-500/5 border border-red-500/10 backdrop-blur-sm">
+            <span className="text-6xl md:text-8xl font-black text-red-400 tracking-tighter">{s.stat}</span>
+            <p className="text-red-300/60 mt-2 text-lg">{s.statLabel}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {s.cards?.map((c, i) => (
+              <div key={i} className="flex items-center gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-red-500/20 transition-all duration-300" style={{ animationDelay: `${i * 100}ms` }}>
+                <span className="text-2xl">{c.icon}</span>
+                <span className="text-white/70 text-sm md:text-base">{c.text}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Slide 3 */}
-      {s.id === 3 && (
-        <div className="max-w-4xl space-y-10 animate-fadeIn">
-          <h2 className="text-6xl font-bold text-white"><span className="text-[#c9a84c]">Introducing</span> JURI Protocol</h2>
-          <p className="text-2xl text-green-400 font-semibold">{s.subtitle}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {s.points?.map((p, i) => (
-              <div key={i} className="p-6 bg-white/5 rounded-lg border border-white/10 text-center space-y-3 hover:border-[#c9a84c]/30 transition-all">
-                <span className="text-6xl">{p.emoji}</span>
-                <p className="text-gray-200 font-semibold text-lg">{p.text}</p>
+      {/* Slide 2: After Every Exploit */}
+      {slide === 2 && (
+        <div key={animKey} className="max-w-3xl w-full space-y-12 animate-slideUp">
+          <div>
+            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-amber-400">{s.titleAccent}</span></h2>
+            <p className="text-white/30 text-lg mt-2">{s.subtitle}</p>
+          </div>
+          <div className="relative pl-8 border-l-2 border-amber-500/20 space-y-6">
+            {s.timeline?.map((t, i) => (
+              <div key={i} className="relative pl-6 animate-slideUp" style={{ animationDelay: `${i * 150}ms` }}>
+                <div className="absolute left-[-25px] top-1.5 w-3 h-3 rounded-full bg-amber-500/30 border border-amber-500/50" />
+                <span className="text-lg text-white/60">{t}</span>
               </div>
             ))}
           </div>
-          <div className="text-center pt-4"><span className="text-[#c9a84c] text-lg font-mono">3 AI Agents. 1 Mission: Never exploit twice.</span></div>
         </div>
       )}
 
-      {/* Slide 4 */}
-      {s.id === 4 && (
-        <div className="max-w-3xl space-y-8 animate-fadeIn">
-          <h2 className="text-6xl font-bold text-white">{s.title}</h2>
+      {/* Slide 3: Solution */}
+      {slide === 3 && (
+        <div key={animKey} className="max-w-5xl w-full space-y-12 animate-slideUp">
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#e8d48b]">{s.titleAccent}</span></h2>
+            <p className="text-2xl text-emerald-400 font-semibold tracking-wide">{s.tagline}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {s.agents?.map((a, i) => (
+              <div key={i} className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:border-[#c9a84c]/30 hover:bg-white/[0.04] transition-all duration-500 text-center space-y-4" style={{ animationDelay: `${i * 200}ms` }}>
+                <span className="text-7xl block group-hover:scale-110 transition-transform duration-500">{a.emoji}</span>
+                <h3 className="text-xl font-bold text-white">{a.role}</h3>
+                <p className="text-white/40 text-sm leading-relaxed">{a.desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-[#c9a84c]/60 font-mono text-sm">3 AI Agents · 1 Mission</p>
+        </div>
+      )}
+
+      {/* Slide 4: How It Works */}
+      {slide === 4 && (
+        <div key={animKey} className="max-w-3xl w-full space-y-10 animate-slideUp">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-sky-400">{s.titleAccent}</span></h2>
           <div className="space-y-3">
-            {s.steps?.map((step, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/5 hover:border-[#c9a84c]/20 transition-all">
-                <span className="text-[#c9a84c] font-bold text-xl min-w-[30px]">{i + 1}</span>
-                <span className="text-gray-300 text-lg">{step}</span>
+            {s.steps?.map((st, i) => (
+              <div key={i} className="group flex items-center gap-5 p-4 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.08] transition-all duration-300 animate-slideUp" style={{ animationDelay: `${i * 100}ms` }}>
+                <span className="text-3xl font-black text-white/10 group-hover:text-[#c9a84c]/60 transition-colors duration-500 min-w-[50px]">{st.num}</span>
+                <span className="text-white/70 group-hover:text-white/90 transition-colors">{st.text}</span>
               </div>
             ))}
           </div>
@@ -199,95 +252,85 @@ export default function PitchPage() {
       )}
 
       {/* Slide 5: Architecture */}
-      {s.id === 5 && (
-        <div className="max-w-4xl space-y-8 animate-fadeIn w-full">
-          <h2 className="text-6xl font-bold text-white text-center">{s.title}</h2>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            {[
-              { icon: "🔍", name: "Forensic", desc: "Trace funds\nStore evidence", color: "border-blue-500/30 bg-blue-500/5" },
-              { icon: "📊", name: "Analysis", desc: "Classify attack\nScore severity", color: "border-purple-500/30 bg-purple-500/5" },
-              { icon: "✅", name: "Verification", desc: "Cross-reference\n0G Compute TEE", color: "border-green-500/30 bg-green-500/5" },
-            ].map((a, i) => (
-              <div key={i} className={`p-6 rounded-lg border ${a.color} space-y-3`}>
-                <span className="text-5xl">{a.icon}</span>
-                <p className="text-white font-bold text-lg">{a.name}</p>
-                <p className="text-gray-400 text-sm whitespace-pre-line">{a.desc}</p>
+      {slide === 5 && (
+        <div key={animKey} className="max-w-3xl w-full space-y-8 animate-slideUp">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight text-center">{s.title}</h2>
+          <div className="space-y-2">
+            {s.arch?.map((layer, i) => (
+              <div key={i} className={`rounded-xl border ${layer.color} bg-white/[0.01] backdrop-blur-sm p-4 animate-slideUp`} style={{ animationDelay: `${i * 120}ms` }}>
+                <span className="text-[10px] tracking-[0.2em] uppercase text-white/20 mb-2 block">{layer.layer}</span>
+                <div className="flex flex-wrap gap-2">
+                  {layer.items.map((item, j) => (
+                    <span key={j} className="text-sm text-white/70 bg-white/[0.03] rounded-lg px-3 py-1.5">{item}</span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm pt-4">
-            <span className="bg-purple-500/10 text-purple-400 px-3 py-1 rounded font-mono">AXL P2P Encrypted</span>
-            <span className="bg-orange-500/10 text-orange-400 px-3 py-1 rounded font-mono">KeeperHub Execute</span>
-            <span className="bg-green-500/10 text-green-400 px-3 py-1 rounded font-mono">0G Storage</span>
-            <span className="bg-blue-500/10 text-blue-400 px-3 py-1 rounded font-mono">0G Compute</span>
-          </div>
-          <div className="text-center text-gray-600 text-xs">All evidence immutable on 0G Storage · Verdict on 0G Chain</div>
         </div>
       )}
 
       {/* Slide 6: Built With */}
-      {s.id === 6 && (
-        <div className="max-w-3xl space-y-10 animate-fadeIn w-full">
-          <h2 className="text-6xl font-bold text-white text-center">{s.title}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[
-              { name: "0G Chain", color: "text-green-400 bg-green-500/5 border-green-500/20" },
-              { name: "0G Storage", color: "text-green-400 bg-green-500/5 border-green-500/20" },
-              { name: "0G Compute", color: "text-blue-400 bg-blue-500/5 border-blue-500/20" },
-              { name: "Gensyn AXL", color: "text-purple-400 bg-purple-500/5 border-purple-500/20" },
-              { name: "KeeperHub", color: "text-orange-400 bg-orange-500/5 border-orange-500/20" },
-              { name: "Solidity", color: "text-gray-400 bg-gray-500/5 border-gray-500/20" },
-            ].map((sp, i) => (
-              <div key={i} className={`p-4 rounded-lg border ${sp.color} text-center`}>
-                <p className="font-bold">{sp.name}</p>
+      {slide === 6 && (
+        <div key={animKey} className="max-w-3xl w-full space-y-10 animate-slideUp">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight text-center">{s.title} <span className="text-purple-400">{s.titleAccent}</span></h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {s.sponsors?.map((sp, i) => (
+              <div key={i} className={`p-6 rounded-xl border ${sp.color} text-center hover:scale-[1.02] transition-transform duration-300 animate-slideUp`} style={{ animationDelay: `${i * 80}ms` }}>
+                <p className="font-bold text-base">{sp.name}</p>
+                <p className="text-xs text-white/30 mt-1">{sp.sub}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Slide 7 */}
-      {s.id === 7 && (
-        <div className="max-w-3xl space-y-8 animate-fadeIn">
-          <h2 className="text-6xl font-bold text-white">Why <span className="text-[#c9a84c]">JURI</span></h2>
-          <ul className="space-y-4">
-            {s.bullets?.map((b, i) => (
-              <li key={i} className="flex items-start gap-3 text-gray-300 text-lg"><span className="text-[#c9a84c] mt-1">◆</span> {b}</li>
+      {/* Slide 7: Why JURI */}
+      {slide === 7 && (
+        <div key={animKey} className="max-w-3xl w-full space-y-10 animate-slideUp">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#e8d48b]">{s.titleAccent}</span></h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {s.reasons?.map((r, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-[#c9a84c]/20 transition-all duration-300 animate-slideUp" style={{ animationDelay: `${i * 100}ms` }}>
+                <span className="text-2xl mt-0.5">{r.icon}</span>
+                <span className="text-white/70 text-sm">{r.text}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {/* Slide 8: CTA */}
-      {s.id === 8 && (
-        <div className="text-center space-y-10 animate-fadeIn">
-          <h1 className="text-7xl md:text-8xl font-bold tracking-tight">
-            <span className="text-white">JURI</span>{" "}
-            <span className="text-[#c9a84c]">Protocol</span>
+      {slide === 8 && (
+        <div key={animKey} className="text-center space-y-10 animate-slideUp">
+          <h1 className="text-6xl md:text-[8rem] font-black tracking-tighter leading-none">
+            <span className="text-white">{s.title}</span>
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#e8d48b]">{s.titleAccent}</span>
           </h1>
-          <p className="text-3xl text-[#c9a84c] font-semibold">{s.subtitle}</p>
-          <div className="flex items-center justify-center gap-6 pt-6">
-            <span className="text-gray-500 text-sm">ETHGlobal Open Agents 2026</span>
+          <p className="text-2xl md:text-3xl text-[#c9a84c] font-semibold">{s.tagline}</p>
+          <div className="flex items-center justify-center gap-4 pt-4">
+            {s.tracks?.map((t) => (
+              <span key={t} className="px-4 py-2 rounded-full border border-white/10 text-sm text-white/50 bg-white/[0.02]">{t}</span>
+            ))}
           </div>
-          <div className="flex items-center justify-center gap-3 text-sm pt-4">
-            <span className="text-green-400">0G Autonomous Agents</span>
-            <span className="text-gray-700">·</span>
-            <span className="text-purple-400">Gensyn AXL</span>
-            <span className="text-gray-700">·</span>
-            <span className="text-orange-400">KeeperHub</span>
-          </div>
+          <p className="text-white/20 text-sm font-mono pt-8">ETHGlobal Open Agents 2026</p>
         </div>
       )}
 
-      {/* Nav arrows */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-6">
-        <button onClick={(e) => { e.stopPropagation(); setSlide(s => Math.max(s - 1, 0)); }} className="text-gray-500 hover:text-white text-3xl transition-colors">←</button>
-        <button onClick={(e) => { e.stopPropagation(); setSlide(s => Math.min(s + 1, total - 1)); }} className="text-gray-500 hover:text-white text-3xl transition-colors">→</button>
+      {/* Bottom hint */}
+      <div className="fixed bottom-6 left-0 right-0 text-center text-white/15 text-xs z-50 pointer-events-none">
+        Click or → to advance · ← to go back
       </div>
 
       <style jsx global>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideUp {
+          animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
       `}</style>
     </div>
   );
