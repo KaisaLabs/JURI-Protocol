@@ -2,9 +2,9 @@
 export default function VerdictCard({ verdict, caseId }: { verdict: any; caseId?: number }) {
   if (!verdict) return null;
   return (
-    <div className="mt-4 border border-[#c9a84c]/20 rounded-xl bg-[#0a0a12] overflow-hidden" style={{ animation: "slideUp 0.5s ease-out both" }}>
-      <div className="px-4 py-3 border-b border-[#c9a84c]/10 bg-[#c9a84c]/5 flex items-center gap-2">
-        <span className="text-lg">📋</span><h3 className="font-bold text-[#c9a84c] text-sm">Post-Mortem</h3>
+    <div className="mt-4 border border-[#00d4ff]/20 rounded-xl bg-[#0a0a12] overflow-hidden" style={{ animation: "slideUp 0.5s ease-out both" }}>
+      <div className="px-4 py-3 border-b border-[#00d4ff]/10 bg-[#00d4ff]/5 flex items-center gap-2">
+        <span className="text-lg">📋</span><h3 className="font-bold text-[#00d4ff] text-sm">Post-Mortem</h3>
         <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 ml-auto">IMMUTABLE</span>
       </div>
       <div className="p-4 space-y-3">

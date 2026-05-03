@@ -74,12 +74,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#06060b]">
-      <header className="border-b border-white/5 bg-[#06060b]/80 backdrop-blur-sm sticky top-0 z-40">
+    <div className="min-h-screen bg-[#07080d]">
+      <header className="border-b border-white/5 bg-[#07080d]/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-xl">⚖️</span>
-            <span className="font-bold text-[#c9a84c] text-lg tracking-tight">JURI</span>
+            <span className="font-bold text-[#00d4ff] text-lg tracking-tight">JURI</span>
             <span className="text-gray-500 text-sm hidden sm:inline">Protocol</span>
             <span className={`w-1.5 h-1.5 rounded-full ${backendStatus === "direct" ? "bg-green-400" : "bg-yellow-400"}`} />
           </div>
@@ -93,7 +93,7 @@ export default function Home() {
           {(["connect", "investigate", "live", "resolved"] as Step[]).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${
-                step === s ? "bg-[#c9a84c] text-black border-[#c9a84c]" : ["connect","investigate","live","resolved"].indexOf(step) > i ? "bg-green-500/20 text-green-400 border-green-500/40" : "bg-white/5 text-gray-600 border-white/10"
+                step === s ? "bg-[#00d4ff] text-black border-[#00d4ff]" : ["connect","investigate","live","resolved"].indexOf(step) > i ? "bg-green-500/20 text-green-400 border-green-500/40" : "bg-white/5 text-gray-600 border-white/10"
               }`}>{i + 1}</div>
               <span className={step === s ? "text-white" : ""}>{s === "connect" ? "Connect" : s === "investigate" ? "Case" : s === "live" ? "Live" : "Report"}</span>
               {i < 3 && <span className="text-gray-700 mx-1">→</span>}
@@ -109,7 +109,7 @@ export default function Home() {
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-gray-500 space-y-1 text-left max-w-xs mx-auto">
               <p>1. Open MetaMask or Rabby</p>
               <p>2. Add 0G Galileo (Chain ID 16602)</p>
-              <p>3. Get tokens: <a href="https://faucet.0g.ai" target="_blank" className="text-[#c9a84c] hover:underline">faucet.0g.ai</a></p>
+              <p>3. Get tokens: <a href="https://faucet.0g.ai" target="_blank" className="text-[#00d4ff] hover:underline">faucet.0g.ai</a></p>
             </div>
           </div>
         )}
@@ -117,7 +117,7 @@ export default function Home() {
         {(step === "investigate" || step === "live" || step === "resolved") && (
           <div className="max-w-3xl mx-auto">
             {step === "investigate" && (
-              <div className="border border-[#2a2a3a] rounded-xl bg-[#0a0a12] p-6 space-y-4">
+              <div className="border border-[#1e2030] rounded-xl bg-[#0d0f17] p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔍</span>
                   <div><h3 className="font-bold text-white text-lg">New Investigation</h3>
@@ -125,13 +125,13 @@ export default function Home() {
                 </div>
                 <textarea value={dispute} onChange={e => setDispute(e.target.value)}
                   placeholder="Protocol XYZ on Ethereum drained 500 ETH via flash loan oracle manipulation at block 19234000"
-                  rows={3} className="w-full bg-[#06060b] border border-[#2a2a3a] rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#c9a84c] transition-colors resize-none" />
+                  rows={3} className="w-full bg-[#07080d] border border-[#1e2030] rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00d4ff] transition-colors resize-none" />
                 <div className="flex gap-4 items-end">
                   <div className="w-32"><label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Bounty (0G)</label>
                   <input type="number" value={stake} onChange={e => setStake(e.target.value)} step="0.01" min="0.001"
-                    className="w-full bg-[#06060b] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-[#c9a84c] transition-colors" /></div>
+                    className="w-full bg-[#07080d] border border-[#1e2030] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-[#00d4ff] transition-colors" /></div>
                   <button onClick={handleInvestigate} disabled={loading || !dispute.trim()}
-                    className="px-8 py-2.5 bg-[#c9a84c] text-black font-bold rounded-lg hover:bg-[#d4b55a] disabled:opacity-40 transition-all text-sm">
+                    className="px-8 py-2.5 bg-[#00d4ff] text-black font-bold rounded-lg hover:bg-[#33ddff] disabled:opacity-40 transition-all text-sm">
                     {loading ? "Deploying..." : "🔍 Investigate"}
                   </button>
                 </div>
@@ -140,10 +140,10 @@ export default function Home() {
             )}
 
             {timeline.length > 0 && (
-              <div className="mt-4 border border-white/[0.06] rounded-xl bg-[#0a0a12] overflow-hidden">
+              <div className="mt-4 border border-white/[0.06] rounded-xl bg-[#0d0f17] overflow-hidden">
                 <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${step === "live" ? "bg-green-400 animate-pulse" : "bg-[#c9a84c]"}`} />
+                    <div className={`w-2 h-2 rounded-full ${step === "live" ? "bg-green-400 animate-pulse" : "bg-[#00d4ff]"}`} />
                     <span className="text-xs font-semibold text-gray-300">{step === "live" ? "Live Investigation" : "Post-Mortem"}</span>
                   </div>
                   {caseId && <span className="text-[10px] text-gray-600 font-mono">Case #{caseId}</span>}
@@ -165,10 +165,10 @@ export default function Home() {
             )}
 
             {step === "resolved" && verdict && (
-              <div className="mt-4 border border-[#c9a84c]/20 rounded-xl bg-[#0a0a12] overflow-hidden" style={{ animation: "slideUp 0.5s ease-out both" }}>
-                <div className="px-4 py-3 border-b border-[#c9a84c]/10 bg-[#c9a84c]/5 flex items-center gap-2">
+              <div className="mt-4 border border-[#00d4ff]/20 rounded-xl bg-[#0d0f17] overflow-hidden" style={{ animation: "slideUp 0.5s ease-out both" }}>
+                <div className="px-4 py-3 border-b border-[#00d4ff]/10 bg-[#00d4ff]/5 flex items-center gap-2">
                   <span className="text-lg">📋</span>
-                  <h3 className="font-bold text-[#c9a84c]">Post-Mortem Published</h3>
+                  <h3 className="font-bold text-[#00d4ff]">Post-Mortem Published</h3>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 ml-auto">IMMUTABLE</span>
                 </div>
                 <div className="p-4 space-y-4">
@@ -176,10 +176,10 @@ export default function Home() {
                     <span className="text-3xl">🔒</span><p className="text-lg font-bold text-green-400 mt-2">{verdict.result}</p>
                   </div>
                   <div><h4 className="text-xs font-semibold text-gray-400 mb-2">FINDINGS</h4>
-                  <p className="text-sm text-gray-300 leading-relaxed bg-[#06060b] p-3 rounded-lg border border-white/[0.06]">{verdict.reasoning}</p></div>
+                  <p className="text-sm text-gray-300 leading-relaxed bg-[#07080d] p-3 rounded-lg border border-white/[0.06]">{verdict.reasoning}</p></div>
                   <div className="grid grid-cols-2 gap-3 text-[11px]">
-                    <div className="p-3 bg-[#06060b] rounded-lg border border-white/[0.06]"><span className="text-gray-500">Stored on</span><p className="text-gray-300 font-mono mt-0.5">0G Storage Log</p></div>
-                    <div className="p-3 bg-[#06060b] rounded-lg border border-white/[0.06]"><span className="text-gray-500">Verified by</span><p className="text-gray-300 font-mono mt-0.5">0G Compute TEE</p></div>
+                    <div className="p-3 bg-[#07080d] rounded-lg border border-white/[0.06]"><span className="text-gray-500">Stored on</span><p className="text-gray-300 font-mono mt-0.5">0G Storage Log</p></div>
+                    <div className="p-3 bg-[#07080d] rounded-lg border border-white/[0.06]"><span className="text-gray-500">Verified by</span><p className="text-gray-300 font-mono mt-0.5">0G Compute TEE</p></div>
                     <div className="col-span-2 p-3 bg-blue-500/[0.03] rounded-lg border border-blue-500/10"><span className="text-blue-400 text-[10px]">🔒 On-Chain Record</span><p className="text-gray-400 text-[11px] mt-0.5">Contract: 0xe6D5496a... on 0G Galileo</p></div>
                   </div>
                 </div>
