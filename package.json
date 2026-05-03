@@ -5,6 +5,7 @@
   "description": "⚖️ JURI Protocol — DeFi Exploit Forensics & Cross-Chain Knowledge Base",
   "scripts": {
     "dev": "pnpm --filter web dev",
+    "dev:all": "concurrently -n orch,agents,web -c blue,green,yellow \"cd agents && npx tsx src/orchestrator.ts\" \"cd agents && ZG_SKIP_STORAGE=true pnpm all:direct\" \"pnpm dev\"",
     "build": "pnpm --filter web build",
     "agent:orchestrator": "pnpm --filter agents orchestrator",
     "agent:typecheck": "pnpm --filter agents typecheck",
