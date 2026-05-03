@@ -49,15 +49,15 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
   try{await fetch(API_URL+"/api/health");console.log("✅ Orchestrator ready\n");}
   catch(e){console.log("❌",e.message);done();return;}
 
-  console.log("👨‍⚖️  Judge...");
+  console.log("✅ Verification...");
   st("VERIFICATION","src/verification.ts");
   await new Promise(r=>setTimeout(r,3000));
 
-  console.log("📢 Plaintiff...");
+  console.log("🔍 Forensic...");
   st("FORENSIC","src/forensic.ts");
   await new Promise(r=>setTimeout(r,2000));
 
-  console.log("🛡️  Defendant...");
+  console.log("📊 Analysis...");
   st("ANALYSIS","src/analysis.ts");
   await new Promise(r=>setTimeout(r,4000));
 
@@ -75,7 +75,7 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
   }catch(e){console.log("⚠️",e.message);}
 
   console.log("👀 Monitoring...\n");
-  for(let i=0;i<120;i++){
+  for(let i=0;i<600;i++){
     await new Promise(r=>setTimeout(r,3000));
     if(cid){try{
       const c=await(await fetch(API_URL+"/api/case/"+cid)).json();
@@ -85,6 +85,7 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
       }
       if(c&&c.status==="resolved"){console.log("\n⚖️  RESOLVED: "+(c.verdict?.result||"?")+"\n");if(c.verdict?.reasoning)console.log(c.verdict.reasoning.slice(0,500)+"\n");break;}
       if(c&&c.status==="failed"){console.log("\n❌ FAILED\n");if(c.timeline?.length)console.log(c.timeline[c.timeline.length-1].message+"\n");break;}
+      if(c?.verdict?.result){console.log("\n⚖️  VERDICT: "+c.verdict.result+"\n");if(c.verdict?.reasoning)console.log(c.verdict.reasoning.slice(0,500)+"\n");break;}
     }catch{}}
   }
   console.log("\n🛑 Done.\n");

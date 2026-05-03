@@ -18,20 +18,20 @@ const CONTRACT_ABI = [
 
 class Orchestrator {
   private readonly runtimeConfig = getRuntimeConfig();
-  private readonly plaintiffKey = getRolePrivateKey("forensic");
-  private readonly defendantKey = getRolePrivateKey("analysis");
-  private readonly judgeKey = getRolePrivateKey("verification");
+  private readonly forensicKey = getRolePrivateKey("forensic");
+  private readonly analysisKey = getRolePrivateKey("analysis");
+  private readonly verificationKey = getRolePrivateKey("verification");
   private readonly storage = new ZgStorage({
-    privateKey: this.plaintiffKey,
+    privateKey: this.forensicKey,
     rpcUrl: process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai",
     indexerUrl: process.env.ZG_STORAGE_INDEXER || "https://indexer-storage-testnet-turbo.0g.ai",
     kvNodeUrl: process.env.ZG_KV_NODE || "http://3.101.147.150:6789",
     network: "testnet",
   });
   private readonly provider = new ethers.JsonRpcProvider(process.env.ZG_RPC_URL || "https://evmrpc-testnet.0g.ai");
-  private readonly plaintiffSigner = new ethers.Wallet(this.plaintiffKey, this.provider);
-  private readonly defendantSigner = new ethers.Wallet(this.defendantKey, this.provider);
-  private readonly judgeAddress = getRoleAddress("verification");
+  private readonly forensicSigner = new ethers.Wallet(this.forensicKey, this.provider);
+  private readonly analysisSigner = new ethers.Wallet(this.analysisKey, this.provider);
+  private readonly verificationAddress = getRoleAddress("verification");
   private readonly contractAddress = process.env.CONTRACT_ADDRESS;
   private readonly activeCases = new Map<number, RuntimeCase>();
 
@@ -51,7 +51,7 @@ class Orchestrator {
       throw new Error("CONTRACT_ADDRESS is required for real case creation");
     }
 
-    const contract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.plaintiffSigner);
+    const contract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.forensicSigner);
     const stakeWei = ethers.parseEther(stake);
     const disputeStorage = await this.storage.storeValue(`dispute:draft:${Date.now()}:${ethers.hexlify(ethers.randomBytes(4))}`, dispute);
 
@@ -60,9 +60,9 @@ class Orchestrator {
       dispute,
       stake,
       transport: this.runtimeConfig.transportMode,
-      plaintiffAddress: getRoleAddress("forensic"),
-      defendantAddress: getRoleAddress("analysis"),
-      judgeAddress: this.judgeAddress,
+      forensicAddress: getRoleAddress("forensic"),
+      analysisAddress: getRoleAddress("analysis"),
+      verificationAddress: this.verificationAddress,
       disputeStorage,
     });
 
@@ -70,9 +70,9 @@ class Orchestrator {
     runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_created", `Creating case for dispute: ${dispute}`, { stake, disputeStorage }));
 
     try {
-      const createTx = await contract.createCase(disputeStorage.ref, this.defendantSigner.address, this.judgeAddress, { value: stakeWei });
+      const createTx = await contract.createCase(disputeStorage.ref, this.analysisSigner.address, this.verificationAddress, { value: stakeWei });
       runtimeCase.onChain.create = { status: "submitted", txHash: createTx.hash };
-      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_create_submitted", "Plaintiff createCase transaction submitted", { txHash: createTx.hash }));
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_create_submitted", "Forensic createCase transaction submitted", { txHash: createTx.hash }));
       await createTx.wait();
       runtimeCase.onChain.create = { status: "confirmed", txHash: createTx.hash };
 
@@ -80,10 +80,10 @@ class Orchestrator {
       runtimeCase.id = actualCaseId;
       this.activeCases.set(actualCaseId, runtimeCase);
 
-      const defendantContract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.defendantSigner);
-      const joinTx = await defendantContract.joinCase(runtimeCase.id, { value: stakeWei });
+      const analysisContract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.analysisSigner);
+      const joinTx = await analysisContract.joinCase(runtimeCase.id, { value: stakeWei });
       runtimeCase.onChain.join = { status: "submitted", txHash: joinTx.hash };
-      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_join_submitted", "Defendant joinCase transaction submitted", { txHash: joinTx.hash }));
+      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_join_submitted", "Analysis joinCase transaction submitted", { txHash: joinTx.hash }));
       await joinTx.wait();
       runtimeCase.onChain.join = { status: "confirmed", txHash: joinTx.hash };
       runtimeCase.status = "ready";

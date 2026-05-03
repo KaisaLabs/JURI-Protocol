@@ -12,9 +12,9 @@ export interface RuntimeConfig {
 }
 
 const DEFAULT_CONTROL_PORTS: Record<AgentRole, number> = {
-  plaintiff: 9101,
-  defendant: 9102,
-  judge: 9103,
+  forensic: 9101,
+  analysis: 9102,
+  verification: 9103,
 };
 
 export function resolveTransportMode(value = process.env.AGENT_TRANSPORT): TransportMode {
@@ -43,9 +43,9 @@ export function getRuntimeConfig(): RuntimeConfig {
     controlToken,
     bindHost: "127.0.0.1",
     controlPorts: {
-      plaintiff: getControlPort("plaintiff"),
-      defendant: getControlPort("defendant"),
-      judge: getControlPort("judge"),
+      forensic: getControlPort("forensic"),
+      analysis: getControlPort("analysis"),
+      verification: getControlPort("verification"),
     },
   };
 }
@@ -81,21 +81,21 @@ export function validateDistinctRoleSigners(): void {
     return;
   }
 
-  const roles: AgentRole[] = ["plaintiff", "defendant", "judge"];
+  const roles: AgentRole[] = ["forensic", "analysis", "verification"];
   const addresses = roles.map((role) => ({ role, address: getRoleAddress(role).toLowerCase() }));
   const uniqueAddresses = new Set(addresses.map((entry) => entry.address));
   if (uniqueAddresses.size !== roles.length) {
-    throw new Error("Distinct PLAINTIFF_KEY, DEFENDANT_KEY, and JUDGE_KEY are required when CONTRACT_ADDRESS is configured");
+    throw new Error("Distinct FORENSIC_KEY, ANALYSIS_KEY, and VERIFICATION_KEY are required when CONTRACT_ADDRESS is configured");
   }
 }
 
 function fallbackPrivateKey(role: AgentRole): string {
   switch (role) {
-    case "plaintiff":
+    case "forensic":
       return "0x0000000000000000000000000000000000000000000000000000000000000001";
-    case "defendant":
+    case "analysis":
       return "0x0000000000000000000000000000000000000000000000000000000000000002";
-    case "judge":
+    case "verification":
       return "0x0000000000000000000000000000000000000000000000000000000000000003";
   }
 }

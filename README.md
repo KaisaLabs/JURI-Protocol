@@ -2,7 +2,7 @@
 
 **Built for ETHGlobal Open Agents 2026**
 
-Agent Court is a decentralized arbitration system where AI agents settle disputes on-chain. Three specialized agents — **Plaintiff**, **Defendant**, and **Judge** — store evidence on 0G Storage, and the Judge uses 0G Compute's TEE-verified inference to issue fair verdicts. The current demo-ready default runtime is **direct local orchestration**: the web app talks to Next.js API routes, those routes proxy to the orchestrator, and the orchestrator coordinates the agents. `AGENT_TRANSPORT=axl` is still available when you want the AXL transport path.
+Agent Court is a decentralized arbitration system where AI agents settle disputes on-chain. Three specialized agents — **Forensic**, **Analysis**, and **Verification** — store evidence on 0G Storage, and the Verification agent uses 0G Compute's TEE-verified inference to issue fair verdicts. The current demo-ready default runtime is **direct local orchestration**: the web app talks to Next.js API routes, those routes proxy to the orchestrator, and the orchestrator coordinates the agents. `AGENT_TRANSPORT=axl` is still available when you want the AXL transport path.
 
 > 🏆 **Tracks:** 0G Autonomous Agents · Gensyn AXL · KeeperHub
 
@@ -34,7 +34,7 @@ Orchestrator
 │         AGENT COURT SYSTEM               │
 │                                          │
 │  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-│  │Plaintiff │  │Defendant │  │ JUDGE  │ │
+│  │Forensic │  │Analysis │  │VERIFICATION│ │
 │  │ Agent A  │  │ Agent B  │  │Agent C │ │
 │  │LLM:GLM-5 │  │LLM:GLM-5 │  │0G Comp.│ │
 │  └────┬─────┘  └────┬─────┘  └───┬────┘ │
@@ -105,15 +105,15 @@ Required for 0G / chain integration:
 
 Required for distinct on-chain actors when `CONTRACT_ADDRESS` is set:
 
-- `PLAINTIFF_KEY`
-- `DEFENDANT_KEY`
-- `JUDGE_KEY`
+- `FORENSIC_KEY`
+- `ANALYSIS_KEY`
+- `VERIFICATION_KEY`
 
 Optional runtime settings:
 
 - `AGENT_TRANSPORT=direct` for the local default
 - `AGENT_TRANSPORT=axl` if you want to run the AXL transport path
-- `PLAINTIFF_CONTROL_PORT`, `DEFENDANT_CONTROL_PORT`, `JUDGE_CONTROL_PORT`
+- `FORENSIC_CONTROL_PORT`, `ANALYSIS_CONTROL_PORT`, `VERIFICATION_CONTROL_PORT`
 
 ### Start the demo-ready runtime
 
@@ -123,14 +123,14 @@ You need **5 terminals** for the default local demo:
 # Terminal 1: Orchestrator API + runtime state server
 pnpm agent:orchestrator
 
-# Terminal 2: Plaintiff agent
-pnpm agent:plaintiff
+# Terminal 2: Forensic agent
+pnpm agent:forensic
 
-# Terminal 3: Defendant agent
-pnpm agent:defendant
+# Terminal 3: Analysis agent
+pnpm agent:analysis
 
-# Terminal 4: Judge agent
-pnpm agent:judge
+# Terminal 4: Verification agent
+pnpm agent:verification
 
 # Terminal 5: Next.js web app
 pnpm dev
@@ -149,11 +149,11 @@ If you want the AXL path instead of the direct default:
 bash scripts/run-axl.sh
 # Then run the node commands printed by that script
 
-# Separate terminals: orchestrator, plaintiff, defendant, judge, web
+# Separate terminals: orchestrator, forensic, analysis, verification, web
 AGENT_TRANSPORT=axl pnpm agent:orchestrator
-AGENT_TRANSPORT=axl pnpm agent:plaintiff
-AGENT_TRANSPORT=axl pnpm agent:defendant
-AGENT_TRANSPORT=axl pnpm agent:judge
+AGENT_TRANSPORT=axl pnpm agent:forensic
+AGENT_TRANSPORT=axl pnpm agent:analysis
+AGENT_TRANSPORT=axl pnpm agent:verification
 pnpm dev
 ```
 
@@ -177,9 +177,9 @@ agent-court/
 │   └── hardhat.config.ts
 ├── agents/              # Agent scripts (Node.js/TypeScript)
 │   ├── src/
-│   │   ├── plaintiff.ts     # Agent A — argues FOR
-│   │   ├── defendant.ts     # Agent B — argues AGAINST
-│   │   ├── judge.ts         # Agent C — evaluates + verdict
+│   │   ├── forensic.ts     # Forensic Agent — traces fund flows
+│   │   ├── analysis.ts     # Analysis Agent — classifies attack vectors
+│   │   ├── verification.ts     # Verification Agent — publishes post-mortem
 │   │   ├── agent-base.ts    # Base agent class
 │   │   ├── axl-client.ts    # AXL HTTP API wrapper
 │   │   ├── storage.ts       # 0G Storage SDK wrapper
@@ -202,11 +202,11 @@ agent-court/
 ## 🎯 Hackathon Track Eligibility
 
 ### 🏆 0G Autonomous Agents, Swarms & iNFT Innovations
-- ✅ Working example agent (Judge with TEE-verified inference)
+- ✅ Working example agent (Verification with TEE-verified inference)
 - ✅ 0G Storage for evidence (KV) and immutable reasoning (Log)
-- ✅ 0G Compute for verifiable Judge inference
+- ✅ 0G Compute for verifiable Verification inference
 - ✅ 0G Chain smart contract (AgentCourt.sol deployed on Galileo testnet)
-- ✅ Multi-agent coordination (Plaintiff + Defendant + Judge)
+- ✅ Multi-agent coordination (Forensic + Analysis + Verification)
 
 ### 🏆 Gensyn AXL — Best Application of Agent eXchange Layer
 - ✅ 3 separate AXL nodes communicating P2P (encrypted)
@@ -235,7 +235,7 @@ agent-court/
 | Communication  | **Gensyn AXL** (P2P encrypted, 3 nodes)              |
 | Execution      | **0G Chain contract withdrawals** (direct runtime)   |
 | LLM (Agents)   | GLM-5 / qwen3.6-plus (custom OpenAI-compatible)      |
-| LLM (Judge)    | 0G Compute (qwen-2.5-7b-instruct, TEE-signed)       |
+| LLM (Verification)    | 0G Compute (qwen-2.5-7b-instruct, TEE-signed)       |
 | Frontend       | Next.js 15 + React 19 + Tailwind CSS v4              |
 | Smart Contract | Solidity 0.8.24 + Hardhat + OpenZeppelin             |
 
@@ -245,11 +245,11 @@ agent-court/
 
 **AgentCourt.sol** deployed on **0G Chain Galileo Testnet**:
 
-- `createCase()` — Plaintiff creates dispute + stakes tokens
-- `joinCase()` — Defendant joins by matching stake
-- `resolveCase()` — Judge issues verdict
+- `createCase()` — Forensic creates dispute + stakes tokens
+- `joinCase()` — Analysis joins by matching stake
+- `resolveCase()` — Verification issues verdict
 - `withdrawWinnings()` — Winner claims payout
-- `withdrawJudgeFee()` — Judge claims 10% fee
+- `withdrawVerificationFee()` — Verification claims 10% fee
 
 The repo expects a real Galileo deployment, but the contract address is not hardcoded in this README. Set `CONTRACT_ADDRESS` in your environment for the current deployment you want to run against.
 

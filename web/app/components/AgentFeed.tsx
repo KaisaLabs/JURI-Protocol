@@ -11,16 +11,16 @@ interface AgentFeedProps {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  plaintiff: "text-blue-400",
-  defendant: "text-red-400",
-  judge: "text-[#c9a84c]",
+  forensic: "text-blue-400",
+  analysis: "text-red-400",
+  verification: "text-[#c9a84c]",
   orchestrator: "text-gray-400",
 };
 
 const ROLE_ICONS: Record<string, string> = {
-  plaintiff: "📢",
-  defendant: "🛡️",
-  judge: "👨‍⚖️",
+  forensic: "🔍",
+  analysis: "📊",
+  verification: "✅",
   orchestrator: "⚙️",
 };
 

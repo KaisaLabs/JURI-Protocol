@@ -22,11 +22,11 @@
 ### Existing files to modify
 
 - `agents/src/orchestrator.ts`
-- `agents/src/judge.ts`
+- `agents/src/verification.ts`
 - `agents/src/agent-base.ts`
 - `agents/src/storage.ts`
-- `agents/src/plaintiff.ts`
-- `agents/src/defendant.ts`
+- `agents/src/forensic.ts`
+- `agents/src/analysis.ts`
 - `agents/src/types.ts`
 - `agents/package.json`
 - `web/app/page.tsx`
@@ -136,7 +136,7 @@ Expected:
   - transport mode
   - whether the orchestrator is running
   - whether storage is connected
-  - whether the judge compute path is configured
+  - whether the verification compute path is configured
   - active case count
 
 - [ ] Update `/api/case`, `/api/case/:id`, and `/api/cases` responses so they return the normalized shape expected by the web app.
@@ -175,7 +175,7 @@ Expected:
 
 - [ ] Keep existing message signing and retry behavior unless a minimal fix is necessary for the demo path.
 
-- [ ] In `agents/src/storage.ts`, add or expose enough structured return data so orchestrator and judge can report whether dispute/evidence/verdict writes were:
+- [ ] In `agents/src/storage.ts`, add or expose enough structured return data so orchestrator and verification can report whether dispute/evidence/verdict writes were:
   - written,
   - skipped because storage is unavailable,
   - failed with an error.
@@ -195,8 +195,8 @@ Expected:
 ### Task 4: Update Plaintiff and Defendant to Emit Truthful Case Progress
 
 **Files:**
-- Modify: `agents/src/plaintiff.ts`
-- Modify: `agents/src/defendant.ts`
+- Modify: `agents/src/forensic.ts`
+- Modify: `agents/src/analysis.ts`
 - Modify: `agents/src/agent-base.ts`
 - Modify: `agents/src/types.ts`
 
@@ -217,9 +217,9 @@ Expected:
 Run in separate terminals:
 ```bash
 pnpm --filter agents exec tsx src/orchestrator.ts
-pnpm --filter agents exec tsx src/plaintiff.ts
-pnpm --filter agents exec tsx src/defendant.ts
-pnpm --filter agents exec tsx src/judge.ts
+pnpm --filter agents exec tsx src/forensic.ts
+pnpm --filter agents exec tsx src/analysis.ts
+pnpm --filter agents exec tsx src/verification.ts
 ```
 
 Then create a case:
@@ -229,13 +229,13 @@ curl -X POST http://localhost:4000/api/case -H 'Content-Type: application/json' 
 
 Expected:
 - Case creation succeeds.
-- Plaintiff and defendant exchange messages through the selected transport.
+- Forensic and analysis exchange messages through the selected transport.
 - The orchestrator records progress in `/api/case/:id`.
 
 ### Task 5: Make Judge Outcomes and Payout Status First-Class Runtime Data
 
 **Files:**
-- Modify: `agents/src/judge.ts`
+- Modify: `agents/src/verification.ts`
 - Modify: `agents/src/storage.ts`
 - Modify: `agents/src/case-runtime.ts`
 - Modify: `agents/src/types.ts`
@@ -260,7 +260,7 @@ Expected:
   - skipped,
   - failed.
 
-- [ ] Prefer small return-shape improvements over rewriting the judge agent architecture.
+- [ ] Prefer small return-shape improvements over rewriting the verification agent architecture.
 
 - [ ] Verify end-to-end verdict visibility via API:
 
@@ -344,7 +344,7 @@ Expected:
 - Modify: `README.md`
 - Modify: `.env.example`
 
-- [ ] Align the repo scripts with the current package names and actual commands. In particular, fix the mismatch where root scripts reference `dev:plaintiff`, `dev:defendant`, and `dev:judge` but `agents/package.json` exposes `plaintiff`, `defendant`, `judge`, and `orchestrator`.
+- [ ] Align the repo scripts with the current package names and actual commands. In particular, fix the mismatch where root scripts reference `dev:forensic`, `dev:analysis`, and `dev:verification` but `agents/package.json` exposes `forensic`, `analysis`, `verification`, and `orchestrator`.
 
 - [ ] Add a documented direct-default startup path that works from a clean clone after env setup.
 
@@ -385,9 +385,9 @@ Expected:
 Run:
 ```bash
 AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/orchestrator.ts
-AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/plaintiff.ts
-AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/defendant.ts
-AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/judge.ts
+AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/forensic.ts
+AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/analysis.ts
+AGENT_TRANSPORT=direct pnpm --filter agents exec tsx src/verification.ts
 pnpm --filter web dev
 ```
 
@@ -402,9 +402,9 @@ Manual check:
 Run:
 ```bash
 AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/orchestrator.ts
-AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/plaintiff.ts
-AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/defendant.ts
-AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/judge.ts
+AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/forensic.ts
+AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/analysis.ts
+AGENT_TRANSPORT=axl pnpm --filter agents exec tsx src/verification.ts
 ```
 
 Manual check:

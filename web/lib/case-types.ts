@@ -19,14 +19,14 @@ export interface StorageWriteResult {
 
 export interface RuntimeTimelineEvent {
   at: number;
-  actor: "plaintiff" | "defendant" | "judge" | "orchestrator";
+  actor: "forensic" | "analysis" | "verification" | "orchestrator";
   type: string;
   message: string;
   data?: Record<string, unknown>;
 }
 
 export interface RuntimeEvidenceRef {
-  role: "plaintiff" | "defendant" | "judge";
+  role: "forensic" | "analysis" | "verification";
   round: number;
   kind: "dispute" | "argument" | "closing" | "verdict";
   storage: StorageWriteResult;
@@ -39,7 +39,7 @@ export interface OnChainActionState {
 }
 
 export interface RuntimeVerdict {
-  result: "PLAINTIFF" | "DEFENDANT" | "TIED";
+  result: "FORENSIC" | "ANALYSIS" | "TIED";
   reasoning: string;
   reasoningRef: string;
   computeProvider: string;
@@ -49,8 +49,8 @@ export interface RuntimeVerdict {
 
 export interface RuntimePayoutStatus {
   status: "not_attempted" | "attempted" | "succeeded" | "skipped" | "failed";
-  path: "winner_withdrawal" | "tie_refund" | "judge_fee" | "none";
-  actor?: "plaintiff" | "defendant" | "judge";
+  path: "winner_withdrawal" | "tie_refund" | "verification_fee" | "none";
+  actor?: "forensic" | "analysis" | "verification";
   txHash?: string;
   note?: string;
   error?: string;
@@ -64,9 +64,9 @@ export interface RuntimeCase {
   status: RuntimeCaseStatus;
   createdAt: number;
   updatedAt: number;
-  plaintiffAddress: string;
-  defendantAddress: string;
-  judgeAddress: string;
+  forensicAddress: string;
+  analysisAddress: string;
+  verificationAddress: string;
   disputeStorage: StorageWriteResult;
   evidence: RuntimeEvidenceRef[];
   timeline: RuntimeTimelineEvent[];
@@ -98,9 +98,9 @@ export interface HealthResponse {
   contractConfigured: boolean;
   activeCases: number;
   controlPorts: {
-    plaintiff: number;
-    defendant: number;
-    judge: number;
+    forensic: number;
+    analysis: number;
+    verification: number;
   };
 }
 

@@ -14,7 +14,7 @@ export default function CaseForm({ onCaseCreated, currentCase, loading = false }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dispute.trim()) return;
-    onCaseCreated({ id: 0, dispute: dispute.trim(), status: "CREATING", plaintiffAddress: "0xForensic...", defendantAddress: "0xAnalysis...", judgeAddress: "0xVerifier...", stake });
+    onCaseCreated({ id: 0, dispute: dispute.trim(), status: "CREATING", forensicAddress: "0xForensic...", analysisAddress: "0xAnalysis...", verificationAddress: "0xVerifier...", stake });
   };
 
   return (

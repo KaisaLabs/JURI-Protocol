@@ -52,7 +52,7 @@ export interface RuntimeVerdict {
 
 export interface RuntimePayoutStatus {
   status: "not_attempted" | "attempted" | "succeeded" | "skipped" | "failed";
-  path: "winner_withdrawal" | "tie_refund" | "judge_fee" | "none";
+  path: "winner_withdrawal" | "tie_refund" | "verification_fee" | "none";
   actor?: AgentRole;
   txHash?: string;
   note?: string;
@@ -67,9 +67,9 @@ export interface RuntimeCase {
   status: RuntimeCaseStatus;
   createdAt: number;
   updatedAt: number;
-  plaintiffAddress: string;
-  defendantAddress: string;
-  judgeAddress: string;
+  forensicAddress: string;
+  analysisAddress: string;
+  verificationAddress: string;
   disputeStorage: StorageWriteResult;
   evidence: RuntimeEvidenceRef[];
   timeline: RuntimeTimelineEvent[];
@@ -95,9 +95,9 @@ export function createRuntimeCase(input: {
   dispute: string;
   stake: string;
   transport: TransportMode;
-  plaintiffAddress: string;
-  defendantAddress: string;
-  judgeAddress: string;
+  forensicAddress: string;
+  analysisAddress: string;
+  verificationAddress: string;
   disputeStorage: StorageWriteResult;
   createdAt?: number;
 }): RuntimeCase {
@@ -110,9 +110,9 @@ export function createRuntimeCase(input: {
     status: "created",
     createdAt,
     updatedAt: createdAt,
-    plaintiffAddress: input.plaintiffAddress,
-    defendantAddress: input.defendantAddress,
-    judgeAddress: input.judgeAddress,
+    forensicAddress: input.forensicAddress,
+    analysisAddress: input.analysisAddress,
+    verificationAddress: input.verificationAddress,
     disputeStorage: input.disputeStorage,
     evidence: [],
     timeline: [],

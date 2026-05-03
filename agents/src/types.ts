@@ -24,7 +24,7 @@ export interface AgentMessage {
 }
 
 export type AgentRole = "forensic" | "analysis" | "verification";
-export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
+export type Verdict = "FORENSIC" | "ANALYSIS" | "TIED";
 
 export interface AgentIdentity {
   role: AgentRole;
@@ -45,7 +45,7 @@ export interface CaseState {
   forensicArguments: EvidenceEntry[];
   analysisArguments: EvidenceEntry[];
   verdict?: {
-    result: "PLAINTIFF" | "DEFENDANT" | "TIED";
+    result: "FORENSIC" | "ANALYSIS" | "TIED";
     reasoning: string;
     reasoningRef: string; // 0G Storage Log key
     onChainTx?: string;

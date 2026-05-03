@@ -216,7 +216,7 @@
 - [x] E2E flow working (dispute → debate → verdict)
 
 ### Polish (Hackathon — Day 4, May 3)
-- [ ] Rename agents: Plaintiff→Forensic, Defendant→Analysis, Judge→Verification
+- [x] Rename agents: Plaintiff→Forensic, Defendant→Analysis, Judge→Verification
 - [ ] Update LLM prompts to exploit forensics context
 - [ ] Deploy web UI to Vercel
 - [ ] Record demo video (< 3 min)

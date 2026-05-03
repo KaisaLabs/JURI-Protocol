@@ -6,21 +6,21 @@ JURI Protocol is a decentralized arbitration system for AI agents. Three special
 
 ## Agent Roles
 
-### Plaintiff (Agent A)
+### Forensic (Agent A)
 - **LLM:** ASI1 (custom provider)
-- **Role:** Argues IN FAVOR of a proposition
-- **Actions:** Opening argument → Rebuttal → Closing statement
+- **Role:** TRACES FUND FLOWS and COLLECTS ON-CHAIN EVIDENCE
+- **Actions:** Trace fund flows → Follow-up → Closing statement
 - **AXL Port:** 9001
 
-### Defendant (Agent B)
+### Analysis (Agent B)
 - **LLM:** ASI1 (custom provider)
-- **Role:** Argues AGAINST the proposition
-- **Actions:** Counter-argument → Rebuttal → Closing statement
+- **Role:** CLASSIFIES ATTACK VECTORS and SCORES SEVERITY
+- **Actions:** Classify attack → Counter-analysis → Closing statement
 - **AXL Port:** 9002
 
-### Judge (Agent C)
+### Verification (Agent C)
 - **LLM:** 0G Compute (qwen-2.5-7b-instruct, TEE-verified)
-- **Role:** Evaluates all evidence impartially
+- **Role:** CROSS-REFERENCES FINDINGS and PUBLISHES POST-MORTEM
 - **Actions:** Collect evidence → Evaluate → Issue verdict → Trigger payout path
 - **AXL Port:** 9003
 
@@ -32,7 +32,7 @@ Web UI ──(REST)──> Next.js API ──(REST)──> Orchestrator
                                    ┌──────────┼──────────┐
                                    │          │          │
                               Agent A     Agent B     Agent C
-                            (Plaintiff) (Defendant)   (Judge)
+                            (Forensic) (Analysis)   (Verification)
                                    │          │          │
                                    └──────┬───┴───┬──────┘
                                           │       │
@@ -47,8 +47,8 @@ Web UI ──(REST)──> Next.js API ──(REST)──> Orchestrator
 
 1. **Dispute Creation:** User submits dispute through the web app → Next.js API → orchestrator → dispute stored to 0G KV and case created on-chain
 2. **Argument Phase:** Orchestrator seeds the agents → agents exchange arguments over the configured transport (direct by default, AXL optional) → each stores evidence to 0G KV
-3. **Evidence Collection:** Judge reads all evidence from 0G KV
-4. **Verdict:** Judge evaluates via 0G Compute TEE → stores reasoning to 0G Log
+3. **Evidence Collection:** Verification reads all evidence from 0G KV
+4. **Verdict:** Verification evaluates via 0G Compute TEE → stores reasoning to 0G Log
 5. **Payout:** The runtime reports contract withdrawal or refund attempts through the case payout status payload
 
 ## Security
@@ -64,7 +64,7 @@ Web UI ──(REST)──> Next.js API ──(REST)──> Orchestrator
 ### 0G (Deep Integration)
 - Storage KV: Evidence + state
 - Storage Log: Immutable verdict history
-- Compute: TEE-verified Judge inference
+- Compute: TEE-verified Verification inference
 - Chain: AgentCourt.sol smart contract
 - RPC: Galileo testnet
 

@@ -1,8 +1,0 @@
-{
-  "PrivateKeyPath": "private_defendant.pem",
-  "Peers": [
-    "tls://127.0.0.1:9001",
-    "tls://127.0.0.1:9003"
-  ],
-  "Listen": "tls://0.0.0.0:9002"
-}

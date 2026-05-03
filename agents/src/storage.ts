@@ -55,6 +55,11 @@ export class ZgStorage {
   }
 
   async connect(): Promise<boolean> {
+    if (process.env.ZG_SKIP_STORAGE === "true") {
+      this.connected = false;
+      this.log(`Skipping 0G storage (ZG_SKIP_STORAGE=true)`);
+      return false;
+    }
     try {
       await this.indexer.getShardedNodes();
       this.connected = true;

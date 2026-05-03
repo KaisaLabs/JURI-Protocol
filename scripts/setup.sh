@@ -49,7 +49,7 @@ cd - > /dev/null
 
 # Generate keys for each agent node
 echo "Generating Ed25519 keys for agents..."
-for role in plaintiff defendant judge; do
+for role in forensic analysis verification; do
     KEYFILE="agents/config/private_${role}.pem"
     if [ ! -f "$KEYFILE" ]; then
         # macOS: use Homebrew's openssl
@@ -86,9 +86,9 @@ echo ""
 echo "Next steps:"
 echo "  1. Edit .env with your private keys and API credentials"
 echo "  2. Start AXL nodes:    bash scripts/run-axl.sh"
-echo "  3. Start agents:       pnpm agent:plaintiff  (in separate terminals)"
-echo "                         pnpm agent:defendant"
-echo "                         pnpm agent:judge"
+echo "  3. Start agents:       pnpm agent:forensic  (in separate terminals)"
+echo "                         pnpm agent:analysis"
+echo "                         pnpm agent:verification"
 echo "  4. Start web UI:       pnpm dev"
 echo "  5. Deploy contract:    pnpm contract:deploy"
 echo ""

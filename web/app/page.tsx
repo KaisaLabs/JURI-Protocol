@@ -13,9 +13,9 @@ export interface CaseState {
   id: number;
   dispute: string;
   status: CaseStatus;
-  plaintiffAddress: string;
-  defendantAddress: string;
-  judgeAddress: string;
+  forensicAddress: string;
+  analysisAddress: string;
+  verificationAddress: string;
   stake: string;
   contractAddress?: string;
   verdict?: { result: string; reasoning: string };

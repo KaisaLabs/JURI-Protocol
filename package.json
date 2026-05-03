@@ -14,7 +14,7 @@
     "test:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
     "test:contracts": "pnpm --filter contracts test",
     "setup:storage": "cd agents && npx tsx ../scripts/test-storage.ts",
-    "test:e2e": "cd agents && npx tsx ../scripts/e2e-test.ts",
+    "test:e2e": "bash -c 'for p in 4000 9091 9092 9093 9101 9102 9103; do lsof -ti :$p 2>/dev/null | xargs kill -9 2>/dev/null; done; sleep 2' && cd agents && npx tsx ../scripts/e2e-test.ts",
     "start": "cd agents && npx tsx ../scripts/e2e-test.ts",
     "agent:forensic": "pnpm --filter agents run forensic",
     "agent:analysis": "pnpm --filter agents run analysis",

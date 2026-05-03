@@ -12,8 +12,8 @@ function getConfig(): AgentConfig {
   return {
     role: "verification",
     port: 9093,
-    address: process.env.JUDGE_ADDRESS || process.env.AGENT_ADDRESS || "0xVerifier...",
-    privateKey: process.env.JUDGE_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000003",
+    address: process.env.VERIFICATION_ADDRESS || process.env.AGENT_ADDRESS || "0xVerifier...",
+    privateKey: process.env.VERIFICATION_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000003",
     llmBaseUrl: useZGCompute ? process.env.ZG_SERVICE_URL! : (process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1"),
     llmKey: useZGCompute ? process.env.ZG_API_SECRET! : (process.env.CUSTOM_LLM_KEY || process.env.OPENAI_API_KEY || ""),
     llmModel: useZGCompute ? "qwen/qwen-2.5-7b-instruct" : (process.env.CUSTOM_LLM_MODEL || "asi1"),
@@ -75,8 +75,8 @@ class VerificationAgent extends BaseAgent {
     this.log("⏳ Waiting for Forensic + Analysis reports...");
 
     const [forensicClose, analysisClose] = await Promise.all([
-      this.waitForMessage("CLOSING_STATEMENT", "forensic", 120000),
-      this.waitForMessage("CLOSING_STATEMENT", "analysis", 120000),
+      this.waitForMessage("CLOSING_STATEMENT", "forensic", 600000),
+      this.waitForMessage("CLOSING_STATEMENT", "analysis", 600000),
     ]);
     this.forensicClosing = forensicClose.content;
     this.analysisClosing = analysisClose.content;
@@ -90,11 +90,20 @@ class VerificationAgent extends BaseAgent {
     // Evaluate and publish
     const verdict = await this.evaluateAndPublish(evidence);
 
+    // Report verdict to orchestrator so the case becomes "resolved"
+    await this.reportVerdict(
+      { result: verdict.result as "FORENSIC" | "ANALYSIS" | "TIED", reasoning: verdict.reasoning, reasoningRef: verdict.reasoningRef, computeProvider: this.lastLLMMode === "provider" ? (process.env.ZG_SERVICE_URL ? "0G Compute TEE" : "Custom Provider") : "Simulated", simulated: this.lastLLMMode === "simulated", onChain: { status: verdict.onChainTx ? "confirmed" : "skipped", txHash: verdict.onChainTx } },
+      "resolved",
+      `Verdict: ${verdict.result} — ${verdict.attackVector}`
+    );
+
+    // Broadcast verdict to agents first (fast), then store on-chain (slow)
+    await this.broadcastResult(verdict);
+
     // Store immutably
     await this.storeOnChain(verdict);
 
-    // Broadcast + execute
-    await this.broadcastResult(verdict);
+    // Execute
     await this.executeAction(verdict);
 
     this.log("✅ Investigation complete. Post-mortem published.");
@@ -141,7 +150,7 @@ Cross-reference all findings. Publish final post-mortem.`;
     this.log(`📋 ${result} | ${av} | Severity: ${sev}`);
 
     let ref = "local";
-    try { ref = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, av, sev, rc, prev, reason })); }
+    try { const r = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, av, sev, rc, prev, reason })); ref = r.ref; }
     catch { this.log("⚠️ Storage skipped"); }
 
     return { result, attackVector: av, severity: sev, rootCause: rc, prevention: prev, reasoning: reason, reasoningRef: ref };

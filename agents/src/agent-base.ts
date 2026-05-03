@@ -12,7 +12,7 @@ import http from "http";
 import { getRuntimeConfig } from "./runtime-config";
 import { applyRuntimeUpdate, type AgentRuntimeUpdate, type RuntimeCase, type RuntimeCaseStatus, type RuntimeEvidenceRef, type RuntimePayoutStatus, type RuntimeTimelineEvent, type RuntimeVerdict, type StorageWriteResult } from "./case-runtime";
 
-export type Verdict = "PLAINTIFF" | "DEFENDANT" | "TIED";
+export type Verdict = "FORENSIC" | "ANALYSIS" | "TIED";
 
 export interface AgentConfig {
   role: "forensic" | "analysis" | "verification";
@@ -152,19 +152,19 @@ export abstract class BaseAgent {
   /** Simulated response when LLM is unavailable (testing only) */
   private simulateResponse(): string {
     const responses: Record<string, string[]> = {
-      plaintiff: [
-        "The data clearly supports the plaintiff's claim. On-chain metrics show a 73% probability of the stated outcome based on historical patterns analyzed via 0G Storage.",
-        "The defendant's counter-argument ignores critical market indicators. Volume analysis confirms the defendant's data sample is biased.",
-        "In summary, we have presented verifiable on-chain evidence stored on 0G Storage. We request a verdict in the plaintiff's favor.",
+      forensic: [
+        "The data clearly supports the forensic finding. On-chain metrics show a 73% probability of the stated outcome based on historical patterns analyzed via 0G Storage.",
+        "The analysis counter-argument ignores critical market indicators. Volume analysis confirms the analysis data sample is biased.",
+        "In summary, we have presented verifiable on-chain evidence stored on 0G Storage. We request a verdict in the forensic finding's favor.",
       ],
-      defendant: [
-        "The plaintiff's claim relies on cherry-picked data. Our 0G Storage audit reveals omitted counter-indicators that support the opposite conclusion.",
-        "The plaintiff assumes correlation equals causation. Our 0G Compute-verified analysis shows the opposite trend using a larger dataset.",
-        "We have systematically dismantled each of the plaintiff's claims. Our evidence shows the plaintiff's position is fundamentally flawed. Verdict for defendant.",
+      analysis: [
+        "The forensic report relies on cherry-picked data. Our 0G Storage audit reveals omitted counter-indicators that support the opposite conclusion.",
+        "The forensic report assumes correlation equals causation. Our 0G Compute-verified analysis shows the opposite trend using a larger dataset.",
+        "We have systematically dismantled each of the forensic claims. Our evidence shows the forensic position is fundamentally flawed. Verdict for analysis.",
       ],
-      judge: [
-        "VERDICT: DEFENDANT. After evaluating all evidence, the defendant's arguments were more logically sound and supported by verifiable on-chain data from 0G Storage.",
-        "VERDICT: PLAINTIFF. The plaintiff presented stronger evidence supported by 0G Compute's verifiable inference. The defendant did not challenge the core premise.",
+      verification: [
+        "VERDICT: ANALYSIS. After evaluating all evidence, the analysis arguments were more logically sound and supported by verifiable on-chain data from 0G Storage.",
+        "VERDICT: FORENSIC. The forensic report presented stronger evidence supported by 0G Compute's verifiable inference. The analysis did not challenge the core premise.",
         "VERDICT: TIED. Both sides presented compelling arguments of equal merit. Neither party demonstrated clear superiority. Stakes returned.",
       ],
     };
@@ -308,7 +308,7 @@ export abstract class BaseAgent {
         res.writeHead(404, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: false, error: "Not found" }));
       });
-      this.controlServer.listen(controlPort, this.runtimeConfig.bindHost, () => resolve());
+      this.controlServer.listen({ port: controlPort, host: this.runtimeConfig.bindHost, reuseAddr: true }, () => resolve());
     });
     this.log(`Control server listening on ${controlPort}`);
   }

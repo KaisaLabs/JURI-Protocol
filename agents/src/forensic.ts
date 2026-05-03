@@ -12,8 +12,8 @@ function getConfig(): AgentConfig {
   return {
     role: "forensic",
     port: 9091,
-    address: process.env.PLAINTIFF_ADDRESS || process.env.AGENT_ADDRESS || "0xForensic...",
-    privateKey: process.env.PLAINTIFF_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001",
+    address: process.env.FORENSIC_ADDRESS || process.env.AGENT_ADDRESS || "0xForensic...",
+    privateKey: process.env.FORENSIC_KEY || process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001",
     llmBaseUrl: process.env.CUSTOM_LLM_URL || "https://api.openai.com/v1",
     llmKey: process.env.CUSTOM_LLM_KEY || process.env.OPENAI_API_KEY || "",
     llmModel: process.env.CUSTOM_LLM_MODEL || "asi1",
@@ -53,9 +53,9 @@ class ForensicAgent extends BaseAgent {
     }
     this.log("All peers ready: " + (await this.transport.getPeers()).join(", "));
 
-    const caseMsg = await this.waitForMessage("CASE_CREATED", undefined, 120000);
-    this.caseDescription = caseMsg.content;
-    this.caseId = caseMsg.caseId;
+    const runtimeCase = await this.waitForCaseSeed(600000);
+    this.caseDescription = runtimeCase.dispute;
+    this.caseId = runtimeCase.id;
     this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
 
     try { await this.storage.storeDispute(this.caseId, this.caseDescription); this.log("Stored to 0G KV"); }
@@ -70,13 +70,13 @@ class ForensicAgent extends BaseAgent {
 
     // Round 2: Respond to analysis questions
     this.log("⏳ Waiting for Analysis Agent follow-up...");
-    const q1 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 60000);
+    const q1 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 600000);
     const trace2 = await this.generateReport(2, q1.content, this.caseDescription);
     const ref2 = await this.tryStore(2, trace2);
     await this.sendTo("analysis", "REBUTTAL", trace2, ref2 ? [ref2] : []);
 
     // Round 3: Final evidence dump
-    const q2 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 60000);
+    const q2 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 600000);
     const trace3 = await this.generateReport(3, q2.content, this.caseDescription);
     const ref3 = await this.tryStore(3, trace3);
     await this.sendTo("analysis", "REBUTTAL", trace3, ref3 ? [ref3] : []);
@@ -88,7 +88,7 @@ class ForensicAgent extends BaseAgent {
     this.log("Final forensic report sent to Verification Agent ✅");
 
     this.log("⏳ Waiting for investigation verdict...");
-    const verdictMsg = await this.waitForMessage("VERDICT_ISSUED", "verification", 120000);
+    const verdictMsg = await this.waitForMessage("VERDICT_ISSUED", "verification", 1200000);
     const verdict = JSON.parse(verdictMsg.content);
     this.log(`📋 VERDICT: ${verdict.result}`);
     this.log(`📝 ${verdict.reasoning?.slice(0, 200)}...`);

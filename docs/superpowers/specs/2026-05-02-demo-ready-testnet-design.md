@@ -6,7 +6,7 @@ Scope: Demo-readiness only. No application code changes are made by this documen
 
 ## Summary
 
-This design makes the project demo-ready on 0G Galileo testnet by treating the direct HTTP transport as the default real execution path and keeping Gensyn AXL as an optional transport that can be enabled when available. The demo must use real orchestration, real agent turns, real 0G testnet storage and judge output when configured, while avoiding the current fallback-heavy behavior that masks backend failures with simulated UI results.
+This design makes the project demo-ready on 0G Galileo testnet by treating the direct HTTP transport as the default real execution path and keeping Gensyn AXL as an optional transport that can be enabled when available. The demo must use real orchestration, real agent turns, real 0G testnet storage and verification output when configured, while avoiding the current fallback-heavy behavior that masks backend failures with simulated UI results.
 
 ## Current State
 
@@ -15,7 +15,7 @@ The current repo already contains most of the pieces needed for a compelling dem
 ### What exists now
 
 - `agents/src/orchestrator.ts` exposes a lightweight HTTP API and seeds `CASE_CREATED` to the three agents.
-- `agents/src/plaintiff.ts`, `agents/src/defendant.ts`, and `agents/src/judge.ts` implement a simple three-agent debate flow.
+- `agents/src/forensic.ts`, `agents/src/analysis.ts`, and `agents/src/verification.ts` implement a simple three-agent debate flow.
 - `agents/src/transport.ts` already supports `direct` and `axl` transport modes.
 - `agents/src/storage.ts` already wraps 0G Storage KV and file/log upload primitives for Galileo testnet.
 - `web/app/page.tsx` and related components already present a demo dashboard.
@@ -36,7 +36,7 @@ The current repo already contains most of the pieces needed for a compelling dem
 For the demo, the team needs one dependable path that works on a local machine against 0G Galileo testnet without requiring AXL to be operational. That path must still be real enough to demonstrate:
 
 - real agent-to-agent orchestration,
-- real judge output,
+- real verification output,
 - real 0G testnet storage when credentials are present,
 - a truthful UI that reports the actual runtime path and payout/storage status.
 
@@ -51,7 +51,7 @@ The primary runtime is a hybrid real path:
 - Default path: `direct`
 - Optional path: `axl`
 
-"Hybrid" means the product still uses the same orchestration model, case lifecycle, storage layer, judge flow, and UI regardless of transport mode. The only thing that changes is how agent messages move between processes.
+"Hybrid" means the product still uses the same orchestration model, case lifecycle, storage layer, verification flow, and UI regardless of transport mode. The only thing that changes is how agent messages move between processes.
 
 ### Architecture goals
 
@@ -66,8 +66,8 @@ The primary runtime is a hybrid real path:
 1. User submits a dispute from the web UI.
 2. `web/lib/api.ts` calls the orchestrator-backed API.
 3. The orchestrator creates a case record, stores the dispute to 0G when configured, and marks the case as running on the selected transport.
-4. The orchestrator notifies the plaintiff, defendant, and judge using the selected transport.
-5. Plaintiff and defendant exchange arguments over the same transport and persist evidence references through the shared storage wrapper.
+4. The orchestrator notifies the forensic, analysis, and verification using the selected transport.
+5. Forensic and analysis exchange arguments over the same transport and persist evidence references through the shared storage wrapper.
 6. The judge reads evidence, produces a verdict through the configured provider, stores verdict artifacts, and attempts payout handling.
 7. The orchestrator exposes normalized case state for polling by the UI.
 8. The UI renders actual verdict, transport, storage, and payout outcomes for the case.
@@ -80,7 +80,7 @@ The backend should expose a single normalized case shape that covers at least:
 - lifecycle status,
 - selected transport path (`direct` or `axl`),
 - storage connectivity and stored references,
-- compute provider used by the judge,
+- compute provider used by the verification,
 - verdict payload,
 - payout attempt/result,
 - timeline or message feed suitable for the web UI.
@@ -113,11 +113,11 @@ The exact type names can be chosen during implementation, but this shape must be
 The implementation is expected to modify these exact files:
 
 - `agents/src/orchestrator.ts`
-- `agents/src/judge.ts`
+- `agents/src/verification.ts`
 - `agents/src/agent-base.ts`
 - `agents/src/storage.ts`
-- `agents/src/plaintiff.ts`
-- `agents/src/defendant.ts`
+- `agents/src/forensic.ts`
+- `agents/src/analysis.ts`
 - `agents/src/types.ts`
 - `agents/package.json`
 - `web/app/page.tsx`
@@ -148,7 +148,7 @@ The project is demo-ready for this design only when all of the following are tru
 4. The web app no longer uses local simulated verdicts, simulated debate messages, or static payout completion to hide backend failures.
 5. A created case returns a normalized backend case shape that the UI can poll until completion.
 6. The UI displays the actual transport mode, actual verdict data, actual storage references when available, and actual payout attempt status.
-7. The judge verdict includes enough metadata to explain whether 0G Compute, a custom provider, or a degraded fallback path produced the decision.
+7. The verification verdict includes enough metadata to explain whether 0G Compute, a custom provider, or a degraded fallback path produced the decision.
 8. The orchestrator health/status endpoints report truthful runtime details relevant to the demo.
 9. Startup scripts in `package.json` and `agents/package.json` are aligned with the actual commands needed to run the demo.
 10. `README.md` and `.env.example` describe the direct-default testnet demo path clearly and do not imply that simulated UI behavior is the intended production demo.
