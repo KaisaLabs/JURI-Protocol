@@ -12,14 +12,16 @@
     "all:axl": "AGENT_TRANSPORT=axl concurrently \"pnpm forensic\" \"pnpm analysis\" \"pnpm verification\""
   },
   "dependencies": {
+    "@0gfoundation/0g-compute-ts-sdk": "0.8.0",
+    "@0gfoundation/0g-storage-ts-sdk": "1.2.8",
     "@0gfoundation/0g-ts-sdk": "^1.2.1",
+    "dotenv": "^16.4.0",
     "ethers": "^6.13.0",
-    "openai": "^4.73.0",
-    "dotenv": "^16.4.0"
+    "openai": "^4.73.0"
   },
   "devDependencies": {
+    "concurrently": "^9.0.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "concurrently": "^9.0.0"
+    "typescript": "^5.7.0"
   }
 }

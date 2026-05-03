@@ -55,13 +55,13 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
 
   console.log("🔍 Forensic...");
   st("FORENSIC","src/forensic.ts");
-  await new Promise(r=>setTimeout(r,2000));
+  await new Promise(r=>setTimeout(r,5000));
 
   console.log("📊 Analysis...");
   st("ANALYSIS","src/analysis.ts");
-  await new Promise(r=>setTimeout(r,4000));
+  await new Promise(r=>setTimeout(r,6000));
 
-  const d = "Will ETH exceed $3000 by June 2026?";
+  const d = "Euler Finance drained 197M via flash loan attack on March 13 2023 — attacker manipulated eTokens and donated reserves to bypass health checks at block 16817996";
   const stake = "0.01";
   console.log("\n📋 Case: " + d);
 
@@ -76,7 +76,7 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
 
   console.log("👀 Monitoring...\n");
   for(let i=0;i<600;i++){
-    await new Promise(r=>setTimeout(r,3000));
+    await new Promise(r=>setTimeout(r,5000));
     if(cid){try{
       const c=await(await fetch(API_URL+"/api/case/"+cid)).json();
       if(c?.status){

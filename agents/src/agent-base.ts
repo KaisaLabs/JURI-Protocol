@@ -56,7 +56,7 @@ export abstract class BaseAgent {
       network: "testnet",
     });
     this.keeperhub = new KeeperHubClient(config.keeperhubKey);
-    this.signer = new ethers.Wallet(config.privateKey);
+    this.signer = new ethers.Wallet(config.privateKey, new ethers.JsonRpcProvider(config.zgRpcUrl));
     this.llm = new OpenAI({ baseURL: config.llmBaseUrl, apiKey: config.llmKey });
     this.log(`Initialized (transport: ${transportMode})`);
     this.log(`  ${config.role} | Port: ${config.port} | Model: ${config.llmModel}`);

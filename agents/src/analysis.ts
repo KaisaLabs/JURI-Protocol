@@ -48,11 +48,11 @@ class AnalysisAgent extends BaseAgent {
     await this.connect();
     while (true) {
       const peers = await this.transport.getPeers();
-      if (peers.length >= 2) break;
-      this.log("Waiting for peers... (" + peers.length + "/2)");
+      if (peers.length >= 1) break;
+      this.log("Waiting for peers... (" + peers.length + "/1 minimum)");
       await new Promise(r => setTimeout(r, 2000));
     }
-    this.log("All peers ready: " + (await this.transport.getPeers()).join(", "));
+    this.log("Peers ready: " + (await this.transport.getPeers()).join(", "));
 
     const runtimeCase = await this.waitForCaseSeed(600000);
     this.caseDescription = runtimeCase.dispute;
@@ -102,7 +102,7 @@ class AnalysisAgent extends BaseAgent {
   }
 
   private async tryStore(round: number, content: string): Promise<string | null> {
-    try { return await this.storage.storeEvidence(this.caseId, this.config.role, round, content); }
+    try { const r = await this.storage.storeEvidence(this.caseId, this.config.role, round, content); return r.ref; }
     catch { return null; }
   }
 }
