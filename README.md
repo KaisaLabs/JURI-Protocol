@@ -400,7 +400,7 @@ Without verifiable compute + immutable storage + programmable settlement in one 
 
 ## Team
 
-- **Builder:** xfajarr — [Twitter](https://x.com/fajarr0x) [Telegram](t.me/xfajarrr)
+- **Builder:** xfajarr — [Twitter](https://x.com/fajarr0x) [Telegram](https://t.me/xfajarrr)
 - **ETHGlobal Open Agents 2026** — Solo submission
 
 ---
