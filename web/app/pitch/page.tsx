@@ -72,7 +72,7 @@ const slides = [
     accentGlow: "shadow-[0_0_120px_rgba(201,168,76,0.10)]",
     arch: [
       { layer: "INPUT", items: ["Exploit Report", "On-chain Event", "Protocol Alert"], color: "border-slate-600" },
-      { layer: "AGENTS", items: ["🔍 Forensic", "📊 Analysis", "✅ Verification"], color: "border-[#00d4ff]/40" },
+      { layer: "AGENTS", items: ["🔍 Forensic", "📊 Analysis", "✅ Verification"], color: "border-[#e8734a]/40" },
       { layer: "COMMUNICATION", items: ["Gensyn AXL · Encrypted P2P"], color: "border-purple-500/40" },
       { layer: "STORAGE & COMPUTE", items: ["0G Storage KV + Log", "0G Compute TEE"], color: "border-green-500/40" },
       { layer: "EXECUTION", items: ["KeeperHub · Auto-publish", "0G Chain · Immutable Verdict"], color: "border-orange-500/40" },
@@ -151,7 +151,7 @@ export default function PitchPage() {
             <button
               key={i}
               onClick={(e) => { e.stopPropagation(); setSlide(i); setAnimKey(k => k + 1); }}
-              className={`h-1 rounded-full transition-all duration-500 ${i === slide ? "w-8 bg-[#00d4ff]" : "w-4 bg-white/20 hover:bg-white/40"}`}
+              className={`h-1 rounded-full transition-all duration-500 ${i === slide ? "w-8 bg-[#e8734a]" : "w-4 bg-white/20 hover:bg-white/40"}`}
             />
           ))}
         </div>
@@ -161,11 +161,11 @@ export default function PitchPage() {
       {/* Slide 0: Hero */}
       {slide === 0 && (
         <div key={animKey} className="text-center space-y-10 animate-slideUp max-w-3xl">
-          <span className="inline-block text-xs tracking-[0.3em] uppercase text-[#00d4ff]/60 border border-[#00d4ff]/20 rounded-full px-5 py-1.5 mb-4">{s.badge}</span>
+          <span className="inline-block text-xs tracking-[0.3em] uppercase text-[#e8734a]/60 border border-[#e8734a]/20 rounded-full px-5 py-1.5 mb-4">{s.badge}</span>
           <h1 className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">
             <span className="text-white">{s.title}</span>
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#66e8ff]">{s.titleAccent}</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e8734a] to-[#f4a261]">{s.titleAccent}</span>
           </h1>
           <p className="text-xl md:text-2xl text-white/40 font-light max-w-xl mx-auto">{s.tagline}</p>
           <div className="flex items-center justify-center gap-3 pt-6">
@@ -220,19 +220,19 @@ export default function PitchPage() {
       {slide === 3 && (
         <div key={animKey} className="max-w-5xl w-full space-y-12 animate-slideUp">
           <div className="text-center space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#66e8ff]">{s.titleAccent}</span></h2>
+            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e8734a] to-[#f4a261]">{s.titleAccent}</span></h2>
             <p className="text-2xl text-emerald-400 font-semibold tracking-wide">{s.tagline}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {s.agents?.map((a, i) => (
-              <div key={i} className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:border-[#00d4ff]/30 hover:bg-white/[0.04] transition-all duration-500 text-center space-y-4" style={{ animationDelay: `${i * 200}ms` }}>
+              <div key={i} className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:border-[#e8734a]/30 hover:bg-white/[0.04] transition-all duration-500 text-center space-y-4" style={{ animationDelay: `${i * 200}ms` }}>
                 <span className="text-7xl block group-hover:scale-110 transition-transform duration-500">{a.emoji}</span>
                 <h3 className="text-xl font-bold text-white">{a.role}</h3>
                 <p className="text-white/40 text-sm leading-relaxed">{a.desc}</p>
               </div>
             ))}
           </div>
-          <p className="text-center text-[#00d4ff]/60 font-mono text-sm">3 AI Agents · 1 Mission</p>
+          <p className="text-center text-[#e8734a]/60 font-mono text-sm">3 AI Agents · 1 Mission</p>
         </div>
       )}
 
@@ -243,7 +243,7 @@ export default function PitchPage() {
           <div className="space-y-3">
             {s.steps?.map((st, i) => (
               <div key={i} className="group flex items-center gap-5 p-4 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.08] transition-all duration-300 animate-slideUp" style={{ animationDelay: `${i * 100}ms` }}>
-                <span className="text-3xl font-black text-white/10 group-hover:text-[#00d4ff]/60 transition-colors duration-500 min-w-[50px]">{st.num}</span>
+                <span className="text-3xl font-black text-white/10 group-hover:text-[#e8734a]/60 transition-colors duration-500 min-w-[50px]">{st.num}</span>
                 <span className="text-white/70 group-hover:text-white/90 transition-colors">{st.text}</span>
               </div>
             ))}
@@ -288,10 +288,10 @@ export default function PitchPage() {
       {/* Slide 7: Why JURI */}
       {slide === 7 && (
         <div key={animKey} className="max-w-3xl w-full space-y-10 animate-slideUp">
-          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#66e8ff]">{s.titleAccent}</span></h2>
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">{s.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e8734a] to-[#f4a261]">{s.titleAccent}</span></h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {s.reasons?.map((r, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-[#00d4ff]/20 transition-all duration-300 animate-slideUp" style={{ animationDelay: `${i * 100}ms` }}>
+              <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-[#e8734a]/20 transition-all duration-300 animate-slideUp" style={{ animationDelay: `${i * 100}ms` }}>
                 <span className="text-2xl mt-0.5">{r.icon}</span>
                 <span className="text-white/70 text-sm">{r.text}</span>
               </div>
@@ -306,9 +306,9 @@ export default function PitchPage() {
           <h1 className="text-6xl md:text-[8rem] font-black tracking-tighter leading-none">
             <span className="text-white">{s.title}</span>
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#66e8ff]">{s.titleAccent}</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e8734a] to-[#f4a261]">{s.titleAccent}</span>
           </h1>
-          <p className="text-2xl md:text-3xl text-[#00d4ff] font-semibold">{s.tagline}</p>
+          <p className="text-2xl md:text-3xl text-[#e8734a] font-semibold">{s.tagline}</p>
           <div className="flex items-center justify-center gap-4 pt-4">
             {s.tracks?.map((t) => (
               <span key={t} className="px-4 py-2 rounded-full border border-white/10 text-sm text-white/50 bg-white/[0.02]">{t}</span>

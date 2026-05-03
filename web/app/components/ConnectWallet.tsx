@@ -84,7 +84,7 @@ export default function ConnectWallet() {
             <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </button>
           {netOpen && (
-            <div className="absolute top-full mt-1 right-0 bg-[#0d0f17] border border-[#1e2030] rounded-lg p-1 shadow-xl z-50 min-w-[160px]" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-full mt-1 right-0 bg-[#11141e] border border-[#1e2234] rounded-lg p-1 shadow-xl z-50 min-w-[160px]" onClick={e => e.stopPropagation()}>
               {(["testnet", "mainnet"] as const).map(n => (
                 <button key={n} onClick={() => switchNetwork(n)}
                   className={`w-full text-left px-3 py-2 rounded text-xs flex items-center gap-2 hover:bg-white/5 transition-colors ${chainId === NETWORK_CONFIG[n].chainId ? "text-emerald-400" : "text-gray-400"}`}>
@@ -104,8 +104,8 @@ export default function ConnectWallet() {
             <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </button>
           {open && (
-            <div className="absolute top-full mt-1 right-0 bg-[#0d0f17] border border-[#1e2030] rounded-lg p-1 shadow-xl z-50 min-w-[180px]" onClick={e => e.stopPropagation()}>
-              <div className="px-3 py-2 text-[10px] text-gray-500 border-b border-[#1e2030]">
+            <div className="absolute top-full mt-1 right-0 bg-[#11141e] border border-[#1e2234] rounded-lg p-1 shadow-xl z-50 min-w-[180px]" onClick={e => e.stopPropagation()}>
+              <div className="px-3 py-2 text-[10px] text-gray-500 border-b border-[#1e2234]">
                 <p className="font-mono text-gray-400 text-xs">{account.slice(0,10)}...{account.slice(-8)}</p>
                 {balance && <p className="mt-0.5">{balance} 0G</p>}
               </div>
@@ -119,17 +119,17 @@ export default function ConnectWallet() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="px-4 py-2 bg-[#00d4ff] text-black font-semibold rounded-lg hover:bg-[#33ddff] transition-all text-sm">Connect Wallet</button>
+      <button onClick={() => setOpen(true)} className="px-4 py-2 bg-[#e8734a] text-black font-semibold rounded-lg hover:bg-[#f08c6a] transition-all text-sm">Connect Wallet</button>
       {open && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div className="bg-[#0d0f17] border border-[#1e2030] rounded-xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#11141e] border border-[#1e2234] rounded-xl p-6 max-w-sm w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="text-center">
               <span className="text-4xl">🔗</span>
               <h3 className="text-lg font-bold text-white mt-2">Connect Wallet</h3>
               <p className="text-xs text-gray-500 mt-1">Choose 0G Galileo Testnet or Mainnet</p>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              <button onClick={connect} className="p-4 rounded-xl border border-[#1e2030] hover:border-[#00d4ff]/30 bg-[#0a0c14] text-left hover:bg-[#00d4ff]/5 transition-all">
+              <button onClick={connect} className="p-4 rounded-xl border border-[#1e2234] hover:border-[#e8734a]/30 bg-[#0a0c14] text-left hover:bg-[#e8734a]/5 transition-all">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🦊</span>
                   <div><p className="text-sm font-medium text-gray-200">Browser Wallet</p><p className="text-[10px] text-gray-500">MetaMask · Rabby · Coinbase</p></div>
@@ -138,7 +138,7 @@ export default function ConnectWallet() {
             </div>
             {error && <p className="text-xs text-red-400 text-center">{error}</p>}
             <div className="text-[10px] text-gray-600 text-center space-y-0.5">
-              <p>Need testnet 0G? <a href="https://faucet.0g.ai" target="_blank" className="text-[#00d4ff] hover:underline">faucet.0g.ai</a></p>
+              <p>Need testnet 0G? <a href="https://faucet.0g.ai" target="_blank" className="text-[#e8734a] hover:underline">faucet.0g.ai</a></p>
             </div>
             <button onClick={() => setOpen(false)} className="text-xs text-gray-500 hover:text-gray-300 w-full text-center">Cancel</button>
           </div>
