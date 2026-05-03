@@ -4,6 +4,7 @@
  * Transport: AXL (prod) / DIRECT (dev) | LLM: Custom (asi1) | Storage: 0G KV
  */
 import { BaseAgent, type AgentConfig } from "./agent-base";
+import { gatherExploitIntel } from "./search";
 import * as dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
@@ -59,11 +60,16 @@ class AnalysisAgent extends BaseAgent {
     this.caseId = runtimeCase.id;
     this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
 
+    // Gather real-time exploit intelligence
+    this.log("🔎 Gathering exploit intelligence...");
+    const intel = await gatherExploitIntel(this.caseDescription);
+    this.log(`   Intel: ${intel.results.length} items`);
+
     // Round 1: Analyze forensic trace
     this.log("⏳ Waiting for Forensic Agent trace...");
     const trace1 = await this.waitForMessage("ARGUMENT_SUBMITTED", "forensic", 600000);
     this.allForensicReports.push(trace1.content);
-    const analysis1 = await this.generateAnalysis(1, trace1.content);
+    const analysis1 = await this.generateAnalysis(1, trace1.content, intel.summary);
     const ref1 = await this.tryStore(1, analysis1);
     await this.sendTo("forensic", "COUNTER_ARGUMENT", analysis1, ref1 ? [ref1] : []);
     this.log("Analysis sent to Forensic Agent");
@@ -71,14 +77,14 @@ class AnalysisAgent extends BaseAgent {
     // Round 2: Deeper analysis
     const trace2 = await this.waitForMessage("REBUTTAL", "forensic", 600000);
     this.allForensicReports.push(trace2.content);
-    const analysis2 = await this.generateAnalysis(2, trace2.content);
+    const analysis2 = await this.generateAnalysis(2, trace2.content, intel.summary);
     const ref2 = await this.tryStore(2, analysis2);
     await this.sendTo("forensic", "COUNTER_ARGUMENT", analysis2, ref2 ? [ref2] : []);
 
     // Round 3: Final classification
     const trace3 = await this.waitForMessage("REBUTTAL", "forensic", 600000);
     this.allForensicReports.push(trace3.content);
-    const analysis3 = await this.generateAnalysis(3, trace3.content);
+    const analysis3 = await this.generateAnalysis(3, trace3.content, intel.summary);
     const ref3 = await this.tryStore(3, analysis3);
 
     // Closing → Verification Agent
@@ -96,9 +102,10 @@ class AnalysisAgent extends BaseAgent {
     this.log("✅ Analysis Agent: Done.");
   }
 
-  private async generateAnalysis(round: number, forensicTrace: string): Promise<string> {
+  private async generateAnalysis(round: number, forensicTrace: string, intelContext = ""): Promise<string> {
+    const intel = intelContext ? `\n\nREAL-TIME INTELLIGENCE:\n${intelContext}` : "";
     return this.askLLM(ANALYSIS_PROMPT,
-      `ROUND ${round}/3. Forensic trace:\n"${forensicTrace.slice(0, 500)}"\n\nClassify the attack vector, score severity, identify root cause. Ask follow-up questions if needed.`);
+      `ROUND ${round}/3. Forensic trace:\n"${forensicTrace.slice(0, 500)}"\n\nClassify the attack vector, score severity, identify root cause. Ask follow-up questions if needed.${intel}`);
   }
 
   private async tryStore(round: number, content: string): Promise<string | null> {

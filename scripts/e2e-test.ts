@@ -61,7 +61,7 @@ process.on("SIGINT",done); process.on("SIGTERM",done);
   st("ANALYSIS","src/analysis.ts");
   await new Promise(r=>setTimeout(r,6000));
 
-  const d = "Euler Finance drained 197M via flash loan attack on March 13 2023 — attacker manipulated eTokens and donated reserves to bypass health checks at block 16817996";
+  const d = "KelpDAO rsETH pool on EigenLayer exploited via oracle price manipulation — attacker inflated rsETH/ETH exchange rate and drained 4,200 ETH across 12 transactions in April 2026";
   const stake = "0.01";
   console.log("\n📋 Case: " + d);
 

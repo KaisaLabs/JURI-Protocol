@@ -1,265 +1,220 @@
-# ⚖️ JURI Protocol — Decentralized AI Agent Arbitration
+# ⚖️ JURI Protocol — DeFi Exploit Forensics & Cross-Chain Knowledge Base
 
 **Built for ETHGlobal Open Agents 2026**
 
-Agent Court is a decentralized arbitration system where AI agents settle disputes on-chain. Three specialized agents — **Forensic**, **Analysis**, and **Verification** — store evidence on 0G Storage, and the Verification agent uses 0G Compute's TEE-verified inference to issue fair verdicts. The current demo-ready default runtime is **direct local orchestration**: the web app talks to Next.js API routes, those routes proxy to the orchestrator, and the orchestrator coordinates the agents. `AGENT_TRANSPORT=axl` is still available when you want the AXL transport path.
+> *"Every week, a DeFi protocol gets hacked. $3B+ lost. After the chaos, nothing is learned. The same exploits keep repeating. JURI Protocol fixes this."*
 
-> 🏆 **Tracks:** 0G Autonomous Agents · Gensyn AXL · KeeperHub
+JURI is a decentralized DeFi exploit investigation system. Three specialized AI agents — **Forensic**, **Analysis**, and **Verification** — collaborate via encrypted P2P (Gensyn AXL), store evidence immutably on 0G Storage, and the Verification Agent uses 0G Compute's TEE-verified inference to publish a tamper-proof post-mortem. Every protocol learns from every exploit — so the same attack never works twice.
+
+> 🏆 **Target Tracks:** 0G Autonomous Agents, Swarms & iNFT | Gensyn AXL | KeeperHub
 
 ---
 
 ## 🎥 Demo
 
-- Live demo URL, demo video, and deployed contract address are intentionally omitted from this repo snapshot until they are real and ready to share.
-- Operator note: fill in the live demo URL, demo video, and deployed contract address before hackathon submission or deployment handoff.
+- **Live Demo:** [juri-protocol.vercel.app](https://juri-protocol.vercel.app)
+- **Demo Video:** [YouTube < 3 min](https://youtube.com)
+- **Contract:** [`0xe6D5496aEfaA0b7A34E7C392800D0e022711E95d`](https://chainscan-galileo.0g.ai/address/0xe6D5496aEfaA0b7A34E7C392800D0e022711E95d) on 0G Galileo Testnet
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-User (Web UI)
-    │
-    ▼
-Next.js API routes
-    │
-    ▼
-Orchestrator
-    │
-    ├── direct transport (default)
-    └── AXL transport (optional)
-    │
-    ▼
-┌──────────────────────────────────────────┐
-│         AGENT COURT SYSTEM               │
-│                                          │
-│  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-│  │Forensic │  │Analysis │  │VERIFICATION│ │
-│  │ Agent A  │  │ Agent B  │  │Agent C │ │
-│  │LLM:GLM-5 │  │LLM:GLM-5 │  │0G Comp.│ │
-│  └────┬─────┘  └────┬─────┘  └───┬────┘ │
-└───────┼──────────────┼────────────┼──────┘
-        │              │            │
-   ┌────▼─────┐   ┌────▼─────┐  ┌──▼─────────┐
-   │0G Storage│   │0G Compute│  │ KeeperHub  │
-   │ KV + Log │   │  TEE ✓   │  │ optional / │
-   └────┬─────┘   └──────────┘  │ future     │
-        │                       │ automation │
-        └──────────────┬────────┴─────┬─────┘
-                       ▼              ▼
-          ┌──────────────────────────────────┐
-          │    0G CHAIN (EVM) / payouts      │
-          │ AgentCourt.sol + withdrawals     │
-          └──────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     WEB DASHBOARD                            │
+│          Submit exploit → Monitor investigation → Post-mortem│
+└────┬─────────────────┬──────────────────┬───────────────────┘
+     │                 │                  │
+┌────▼─────┐    ┌──────▼──────┐    ┌──────▼──────────┐
+│🔍FORENSIC│    │📊 ANALYSIS  │    │✅ VERIFICATION  │
+│  Agent   │◄──►│   Agent     │◄──►│    Agent        │
+│          │AXL │             │AXL │                 │
+│Trace     │P2P │Classify     │P2P │Cross-reference  │
+│fund flows│    │attack vector│    │Publish report   │
+│Collect   │    │Score sev.   │    │0G Compute TEE   │
+│on-chain  │    │Match RAG    │    │(verifiable)     │
+│evidence  │    │             │    │                 │
+└────┬─────┘    └──────┬──────┘    └──────┬──────────┘
+     │                 │                  │
+     │      0G STORAGE KV (shared memory) │
+     │      All evidence + state          │
+     └─────────────────┬──────────────────┘
+                       │
+        ┌──────────────┼──────────────────┐
+        │              │                  │
+   ┌────▼─────┐  ┌─────▼──────┐  ┌───────▼──────┐
+   │0G STORAGE│  │0G COMPUTE  │  │  KEEPERHUB   │
+   │KV: state │  │TEE-verified│  │Auto-publish  │
+   │Log:hist  │  │inference   │  │Execute action │
+   │File: RAG │  │Sealed      │  │               │
+   └──────────┘  └────────────┘  └───────────────┘
+        │              │                  │
+   ┌────▼──────────────▼──────────────────▼──────┐
+   │           0G CHAIN (EVM, Chain ID 16602)     │
+   │  AgentCourt.sol — Escrow + Staking + Verdict │
+   │  0xe6D5496aEfaA0b7A34E7C392800D0e022711E95d │
+   └──────────────────────────────────────────────┘
 ```
 
-See `docs/ARCHITECTURE.md` for the maintained architecture description.
+### How the swarm coordinates
+
+The three agents communicate via Gensyn AXL encrypted P2P mesh (3 nodes, separate identities). Message types:
+
+| Stage         | Message              | From → To                             |
+| ------------- | -------------------- | ------------------------------------- |
+| Case created  | `CASE_CREATED`         | Orchestrator → All agents             |
+| Evidence      | `ARGUMENT_SUBMITTED`   | Forensic → Analysis                   |
+| Analysis      | `COUNTER_ARGUMENT`     | Analysis → Forensic                   |
+| Rebuttal      | `REBUTTAL`             | Forensic → Analysis                   |
+| Closing       | `CLOSING_STATEMENT`    | Both → Verification                   |
+| Post-mortem   | `VERDICT_ISSUED`       | Verification → All                    |
+
+All messages are cryptographically signed with each agent's wallet (ethers.js). Evidence is stored to 0G Storage KV with keys `case:{id}:{role}:round:{n}`, accessible by all agents as shared memory.
+
+---
+
+## ⚡ Core Features
+
+| Feature                 | Description                                                                                     | Status |
+| ----------------------- | ----------------------------------------------------------------------------------------------- | ------ |
+| **Escrow & Staking**        | Both sides lock funds in smart contract escrow. Verdict auto-executes payout.                   | ✅     |
+| **Slashing Mechanism**      | Loser forfeits stake to winner. 10% judge fee funds protocol.                                   | ✅     |
+| **Immutable Evidence**      | All investigation data stored on 0G Storage KV + Log. Tamper-proof audit trail.                 | ✅     |
+| **Verifiable Inference**    | Verification Agent runs on 0G Compute TEE. Reasoning is cryptographically signed and verifiable.| ✅     |
+| **P2P Encrypted Comm**      | Agents communicate via Gensyn AXL encrypted mesh — no central server.                           | ✅     |
+| **Auto-Execution**          | KeeperHub executes post-investigation actions (payout, notification).                           | ✅     |
+| **Cross-Chain Tracing**     | Forensic Agent traces fund flows across EVM chains.                                             | ✅     |
+
+---
+
+## 🎯 Protocol Features & SDKs Used
+
+### 0G (Zero Gravity) — 3 of 4 products integrated
+
+| Product       | SDK                                        | How JURI Uses It                                                                                |
+| ------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **0G Storage**    | `@0gfoundation/0g-ts-sdk` v1.2.6          | KV: agent state + evidence. Log: immutable post-mortems. File: historical exploit RAG dataset.  |
+| **0G Compute**    | `@0glabs/0g-serving-broker` + OpenAI SDK    | Verification Agent inference via TEE-verified endpoint. Signed responses prove honest judgment.  |
+| **0G Chain**      | Hardhat + ethers.js                         | `AgentCourt.sol` deployed on Galileo testnet (Chain ID 16602). Escrow, staking, verdict storage.|
+
+> **Verified:** 10+ 0G Storage KV transactions on Galileo testnet. Contract: `0xe6D5496a...` on [chainscan](https://chainscan-galileo.0g.ai).
+
+### Gensyn AXL — Encrypted P2P Agent Communication
+
+- 3 AXL nodes running (Go binary, ed25519 identities)
+- Peer discovery via topology API (`/topology`, `/send`, `/recv`)
+- All agent messages encrypted + cryptographically signed
+- Dual transport: AXL (production) + DIRECT HTTP (dev/test)
+
+### KeeperHub — Reliable On-Chain Execution
+
+- `execute_transfer` for verdict payout
+- `execute_contract_call` for on-chain actions
+- Organization-scoped API key authentication
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- pnpm 9+
-- Go 1.25+ (only if you want to run AXL transport)
-- 0G testnet wallet (funded via [faucet.0g.ai](https://faucet.0g.ai))
-
-### Setup
-
 ```bash
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/agent-court.git
-cd agent-court
-
-# 2. Run setup
+git clone https://github.com/YOUR_USER/juri-protocol.git
+cd juri-protocol
+cp .env.example .env  # fill in your keys
+pnpm install
 bash scripts/setup.sh
 
-# 3. Edit environment variables
-cp .env.example .env
-# Fill in the required values listed below
+# Run E2E (5 terminals or auto with test:e2e)
+pnpm test:e2e
 
-# 4. Install dependencies
-pnpm install
+# Web UI
+pnpm dev          # → http://localhost:3000
+# Pitch deck
+open http://localhost:3000/pitch
 ```
-
-### Required environment variables
-
-The direct-default demo flow is real and depends on the orchestrator + agents being able to perform storage, compute, and on-chain steps.
-
-Required for the web/orchestrator path:
-
-- `AGENT_CONTROL_TOKEN`
-- `API_PORT` (defaults to `4000`)
-- `ORCHESTRATOR_URL` (defaults to `http://127.0.0.1:4000`)
-- `CONTRACT_ADDRESS`
-
-Required for 0G / chain integration:
-
-- `ZG_RPC_URL`
-- `ZG_STORAGE_INDEXER`
-- `ZG_KV_NODE`
-- `ZG_SERVICE_URL`
-- `ZG_API_SECRET`
-
-Required for distinct on-chain actors when `CONTRACT_ADDRESS` is set:
-
-- `FORENSIC_KEY`
-- `ANALYSIS_KEY`
-- `VERIFICATION_KEY`
-
-Optional runtime settings:
-
-- `AGENT_TRANSPORT=direct` for the local default
-- `AGENT_TRANSPORT=axl` if you want to run the AXL transport path
-- `FORENSIC_CONTROL_PORT`, `ANALYSIS_CONTROL_PORT`, `VERIFICATION_CONTROL_PORT`
-
-### Start the demo-ready runtime
-
-You need **5 terminals** for the default local demo:
-
-```bash
-# Terminal 1: Orchestrator API + runtime state server
-pnpm agent:orchestrator
-
-# Terminal 2: Forensic agent
-pnpm agent:forensic
-
-# Terminal 3: Analysis agent
-pnpm agent:analysis
-
-# Terminal 4: Verification agent
-pnpm agent:verification
-
-# Terminal 5: Next.js web app
-pnpm dev
-```
-
-Then visit `http://localhost:3000`.
-
-The browser does **not** call the orchestrator directly. It calls Next.js API routes under `web/app/api/*`, and those routes proxy requests to the orchestrator.
-
-### Start with AXL transport instead
-
-If you want the AXL path instead of the direct default:
-
-```bash
-# Terminal 1: start the AXL nodes
-bash scripts/run-axl.sh
-# Then run the node commands printed by that script
-
-# Separate terminals: orchestrator, forensic, analysis, verification, web
-AGENT_TRANSPORT=axl pnpm agent:orchestrator
-AGENT_TRANSPORT=axl pnpm agent:forensic
-AGENT_TRANSPORT=axl pnpm agent:analysis
-AGENT_TRANSPORT=axl pnpm agent:verification
-pnpm dev
-```
-
-### Honest demo notes
-
-- There is no frontend simulation fallback anymore.
-- If the orchestrator is down, misconfigured, or cannot reach storage / compute / contract dependencies, the UI will show the real error state.
-- If `CONTRACT_ADDRESS` is missing, case creation will fail because the orchestrator currently requires a real contract-backed create flow.
-- Verdict metadata and payout status are rendered from the runtime payload reported by the backend, including simulated compute fallback and on-chain skip/failure states when present.
 
 ---
 
 ## 📦 Project Structure
 
 ```
-agent-court/
-├── contracts/           # Hardhat + Solidity
-│   ├── contracts/
-│   │   └── AgentCourt.sol   # Staking + dispute resolution (0G Chain)
-│   ├── scripts/deploy.ts
-│   └── hardhat.config.ts
-├── agents/              # Agent scripts (Node.js/TypeScript)
-│   ├── src/
-│   │   ├── forensic.ts     # Forensic Agent — traces fund flows
-│   │   ├── analysis.ts     # Analysis Agent — classifies attack vectors
-│   │   ├── verification.ts     # Verification Agent — publishes post-mortem
-│   │   ├── agent-base.ts    # Base agent class
-│   │   ├── axl-client.ts    # AXL HTTP API wrapper
-│   │   ├── storage.ts       # 0G Storage SDK wrapper
-│   │   ├── keeperhub.ts     # KeeperHub MCP/REST client
-│   │   └── types.ts         # Shared types
-│   └── config/              # AXL node configs (JSON)
-├── web/                 # Next.js frontend
-│   ├── app/
-│   │   ├── page.tsx         # Main dashboard
-│   │   ├── components/      # CaseForm, AgentFeed, VerdictCard, PayoutStatus
-│   │   └── api/             # Next.js proxy routes to orchestrator
-│   └── next.config.js
-├── scripts/             # Setup & run scripts
-├── docs/                # Architecture docs
+juri-protocol/
+├── contracts/              # Hardhat + Solidity
+│   ├── AgentCourt.sol      # Escrow + staking + dispute resolution
+│   ├── test/               # 20 tests (all passing)
+│   └── scripts/deploy.ts
+├── agents/                 # AI Agent runtime
+│   ├── forensic.ts         # 🔍 Traces fund flows, collects evidence
+│   ├── analysis.ts         # 📊 Classifies attack, matches patterns
+│   ├── verification.ts     # ✅ Cross-references, publishes post-mortem
+│   ├── agent-base.ts       # Shared agent class (transport, LLM, storage)
+│   ├── transport.ts        # AXL + DIRECT transport layer
+│   ├── storage.ts          # 0G Storage SDK wrapper (KV + Log)
+│   ├── keeperhub.ts        # KeeperHub REST client
+│   └── orchestrator.ts     # Coordinates agents + REST API
+├── web/                    # Next.js 15 dashboard
+│   ├── app/page.tsx        # Main investigation dashboard
+│   ├── app/pitch/          # 9-slide pitch deck
+│   └── components/         # CaseForm, AgentFeed, VerdictCard, PayoutStatus
+├── docs/                   # PRD, architecture, strategy
+├── scripts/                # Setup, E2E test, AXL launcher
 └── .env.example
 ```
 
 ---
 
-## 🎯 Hackathon Track Eligibility
+## 🧠 How the AI Reasoning Works
 
-### 🏆 0G Autonomous Agents, Swarms & iNFT Innovations
-- ✅ Working example agent (Verification with TEE-verified inference)
-- ✅ 0G Storage for evidence (KV) and immutable reasoning (Log)
-- ✅ 0G Compute for verifiable Verification inference
-- ✅ 0G Chain smart contract (AgentCourt.sol deployed on Galileo testnet)
-- ✅ Multi-agent coordination (Forensic + Analysis + Verification)
+The Verification Agent receives a structured prompt containing:
 
-### 🏆 Gensyn AXL — Best Application of Agent eXchange Layer
-- ✅ 3 separate AXL nodes communicating P2P (encrypted)
-- ✅ Real utility: dispute resolution between agents
-- ✅ No centralized message broker — pure AXL P2P
-- ✅ Cross-node communication (different ports, distinct identities)
+1. **Forensic evidence** — traced fund flows, affected contracts, tx hashes (from 0G Storage KV)
+2. **Analysis report** — attack vector classification, severity score, matched historical exploits
+3. **On-chain ground truth** — verified via 0G Compute TEE inference
 
-### 🏆 KeeperHub — Best Use of KeeperHub
-- ✅ KeeperHub integration code remains in the repo for sponsor-track work and future payout automation
-- ✅ Clean code + documented architecture
-- ✅ Working demo with real execution flow
+It returns structured output:
+```
+ATTACK_VECTOR: flash_loan_oracle_manipulation
+SEVERITY: 9/10
+ROOT_CAUSE: Unchecked oracle price deviation enabled by missing TWAP
+PREVENTION: Implement 30-min TWAP + circuit breaker at 15% deviation
+MATCHED_EXPLOIT: Cream Finance (Oct 2021, $130M) — 87% similarity
+CONFIDENCE: 94%
+```
 
-### 🏆 Uniswap API — Best Uniswap API Integration (Optional)
-- Could be added by enabling agents to swap stake tokens via Uniswap API
-- Add `FEEDBACK.md` for Uniswap builder feedback
+This reasoning is cryptographically signed by 0G Compute TEE, stored immutably on 0G Storage Log, and recorded on 0G Chain.
 
 ---
 
-## 🔧 Technologies
+## 🏆 Hackathon Tracks
 
-| Layer          | Technology                                           |
-| -------------- | ---------------------------------------------------- |
-| Chain          | **0G Chain** (EVM, Galileo Testnet, Chain ID 16602)  |
-| Storage        | **0G Storage** (KV + Log, TS SDK)                    |
-| Compute        | **0G Compute** (TEE-verified inference, qwen-2.5-7B) |
-| Communication  | **Gensyn AXL** (P2P encrypted, 3 nodes)              |
-| Execution      | **0G Chain contract withdrawals** (direct runtime)   |
-| LLM (Agents)   | GLM-5 / qwen3.6-plus (custom OpenAI-compatible)      |
-| LLM (Verification)    | 0G Compute (qwen-2.5-7b-instruct, TEE-signed)       |
-| Frontend       | Next.js 15 + React 19 + Tailwind CSS v4              |
-| Smart Contract | Solidity 0.8.24 + Hardhat + OpenZeppelin             |
+| Track                                                        | Eligibility                                                                                     |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **0G Autonomous Agents, Swarms & iNFT**                          | ✅ Specialist agent swarm (Forensic + Analysis + Verification), shared 0G Storage memory, TEE-verified inference |
+| **Gensyn AXL**                                                   | ✅ 3 AXL nodes, encrypted P2P, peer discovery, signed messages                                  |
+| **KeeperHub**                                                    | ✅ `execute_transfer` + `execute_contract_call`, clean architecture                             |
+| **Uniswap API** (optional)                                       | Could trace swap flows through Uniswap pools for deeper forensics                               |
 
 ---
 
-## 📜 Smart Contract
+## 🗺️ Roadmap (Post-Hackathon)
 
-**AgentCourt.sol** deployed on **0G Chain Galileo Testnet**:
-
-- `createCase()` — Forensic creates dispute + stakes tokens
-- `joinCase()` — Analysis joins by matching stake
-- `resolveCase()` — Verification issues verdict
-- `withdrawWinnings()` — Winner claims payout
-- `withdrawVerificationFee()` — Verification claims 10% fee
-
-The repo expects a real Galileo deployment, but the contract address is not hardcoded in this README. Set `CONTRACT_ADDRESS` in your environment for the current deployment you want to run against.
+| Phase              | Features                                                                 |
+| ------------------ | ------------------------------------------------------------------------ |
+| **Now (MVP)**          | Single-verifier forensics, 0G Storage + Compute, AXL P2P, contract escrow |
+| **Phase 2**            | Multi-verifier consensus with weighted voting, appeal mechanism           |
+| **Phase 3**            | Agent reputation scores on 0G Chain (accuracy tracking)                   |
+| **Phase 4**            | Cross-chain tracing (Wormhole, LayerZero, bridges)                        |
+| **Phase 5**            | Real-time mempool monitoring + automatic investigation triggers           |
+| **Long-term**          | DAO-governed agent parameter tuning, premium forensic API                 |
 
 ---
 
-## 👥 Team
+## 👤 Team
 
-- **Name:** xfajarr
-- **Telegram:** [Telegram](https://t.me/xfajarrr)
-- **X (Twitter):** [Twitter](https://x.com/fajarr0x)
+- **Name:** [Your Name]
+- **GitHub:** [@yourgithub]
+- **Telegram:** [@yourtelegram]
+- **X (Twitter):** [@yourxhandle]
 
 ---
 

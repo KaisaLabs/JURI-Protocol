@@ -5,6 +5,7 @@
  */
 import { BaseAgent, type AgentConfig } from "./agent-base";
 import type { AgentMessage } from "./types";
+import { gatherExploitIntel } from "./search";
 import * as dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
@@ -60,12 +61,21 @@ class ForensicAgent extends BaseAgent {
     this.caseId = runtimeCase.id;
     this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
 
+    // Gather real-time exploit intelligence from Brave, Serper, Rekt.news
+    this.log("🔎 Gathering exploit intelligence...");
+    const intel = await gatherExploitIntel(this.caseDescription);
+    const sources = [...new Set(intel.results.map(r => r.source))];
+    this.log(`   Intel: ${intel.results.length} items from ${sources.join(", ") || "none"}`);
+    if (intel.results.length > 0) {
+      this.log(`   Top: ${intel.results[0].title.slice(0, 100)}`);
+    }
+
     try { await this.storage.storeDispute(this.caseId, this.caseDescription); this.log("Stored to 0G KV"); }
     catch { this.log("⚠️ 0G Storage unavailable"); }
 
-    // Round 1: Initial fund flow trace
+    // Round 1: Initial fund flow trace (informed by real-time intel)
     this.log("🔍 Tracing fund flows...");
-    const trace1 = await this.generateReport(1, "", this.caseDescription);
+    const trace1 = await this.generateReport(1, "", this.caseDescription, intel.summary);
     const ref1 = await this.tryStore(1, trace1);
     await this.sendTo("analysis", "ARGUMENT_SUBMITTED", trace1, ref1 ? [ref1] : []);
     this.log("Trace sent to Analysis Agent");
@@ -73,13 +83,13 @@ class ForensicAgent extends BaseAgent {
     // Round 2: Respond to analysis questions
     this.log("⏳ Waiting for Analysis Agent follow-up...");
     const q1 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 600000);
-    const trace2 = await this.generateReport(2, q1.content, this.caseDescription);
+    const trace2 = await this.generateReport(2, q1.content, this.caseDescription, intel.summary);
     const ref2 = await this.tryStore(2, trace2);
     await this.sendTo("analysis", "REBUTTAL", trace2, ref2 ? [ref2] : []);
 
     // Round 3: Final evidence dump
     const q2 = await this.waitForMessage("COUNTER_ARGUMENT", "analysis", 600000);
-    const trace3 = await this.generateReport(3, q2.content, this.caseDescription);
+    const trace3 = await this.generateReport(3, q2.content, this.caseDescription, intel.summary);
     const ref3 = await this.tryStore(3, trace3);
     await this.sendTo("analysis", "REBUTTAL", trace3, ref3 ? [ref3] : []);
 
@@ -97,10 +107,11 @@ class ForensicAgent extends BaseAgent {
     this.log("✅ Forensic Agent: Done.");
   }
 
-  private async generateReport(round: number, feedback: string, caseDesc: string): Promise<string> {
+  private async generateReport(round: number, feedback: string, caseDesc: string, intelContext = ""): Promise<string> {
     const fb = feedback ? `\nAnalysis Agent feedback: "${feedback}"` : "";
+    const intel = intelContext ? `\n\nREAL-TIME INTELLIGENCE:\n${intelContext}` : "";
     return this.askLLM(FORENSIC_PROMPT,
-      `INVESTIGATION ROUND ${round}/3 for case: "${caseDesc}".\nTrace fund flows, list affected contracts, key tx hashes.${fb}`);
+      `INVESTIGATION ROUND ${round}/3 for case: "${caseDesc}".\nTrace fund flows, list affected contracts, key tx hashes.${fb}${intel}`);
   }
 
   private async tryStore(round: number, content: string): Promise<string | null> {
