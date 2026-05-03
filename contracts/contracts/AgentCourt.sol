@@ -17,10 +17,10 @@ contract AgentCourt is Ownable, ReentrancyGuard {
     // ===================== Enums & Structs =====================
 
     enum Verdict {
-        PENDING,        // 0
-        PLAINTIFF_WINS, // 1
-        DEFENDANT_WINS, // 2
-        TIED           // 3
+        PENDING,         // 0
+        FORENSIC_WINS,   // 1 (was PLAINTIFF_WINS — mapped to Forensic Agent)
+        ANALYSIS_WINS,   // 2 (was DEFENDANT_WINS — mapped to Analysis Agent)
+        TIED             // 3
     }
 
     struct Case {
@@ -163,12 +163,12 @@ contract AgentCourt is Ownable, ReentrancyGuard {
         uint256 payoutPool = totalPot - c.verifierFee;
         uint256 amount;
 
-        if (c.verdict == Verdict.PLAINTIFF_WINS) {
+        if (c.verdict == Verdict.FORENSIC_WINS) {
             require(msg.sender == c.forensic, "Not the winner");
             require(!c.forensicWithdrawn, "Already withdrawn");
             c.forensicWithdrawn = true;
             amount = payoutPool;
-        } else if (c.verdict == Verdict.DEFENDANT_WINS) {
+        } else if (c.verdict == Verdict.ANALYSIS_WINS) {
             require(msg.sender == c.analysis, "Not the winner");
             require(!c.analysisWithdrawn, "Already withdrawn");
             c.analysisWithdrawn = true;

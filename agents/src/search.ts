@@ -160,3 +160,26 @@ export async function gatherExploitIntel(query: string): Promise<ExploitIntel> {
 
   return { query, results: allResults.slice(0, 10), summary };
 }
+
+export interface DefiLlamaHack {
+  name: string;
+  date: string;
+  amount: number;
+  category: string;
+  target: string;
+  chain: string;
+  technique?: string;
+  classification?: string;
+}
+
+export async function fetchHistoricalHacks(): Promise<{ total: number; totalLost: number; hacks: DefiLlamaHack[] }> {
+  try {
+    const res = await fetch("https://api.llama.fi/hacks", { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return { total: 0, totalLost: 0, hacks: [] };
+    const hacks = await res.json();
+    const totalLost = (hacks as any[]).reduce((sum, h) => sum + (h.amount || 0), 0);
+    return { total: (hacks as any[]).length, totalLost, hacks: hacks as DefiLlamaHack[] };
+  } catch {
+    return { total: 0, totalLost: 0, hacks: [] };
+  }
+}

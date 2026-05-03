@@ -46,7 +46,7 @@ class Orchestrator {
     console.log(`Orchestrator ready on http://127.0.0.1:${PORT}`);
   }
 
-  async createCase(dispute: string, stake: string): Promise<{ caseId: number }> {
+  async createCase(dispute: string, stake: string, skipOnChainCreate = false): Promise<{ caseId: number }> {
     if (!this.contractAddress) {
       throw new Error("CONTRACT_ADDRESS is required for real case creation");
     }
@@ -67,18 +67,27 @@ class Orchestrator {
     });
 
     runtimeCase.status = "funding";
-    runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_created", `Creating case for dispute: ${dispute}`, { stake, disputeStorage }));
 
     try {
-      const createTx = await contract.createCase(disputeStorage.ref, this.analysisSigner.address, this.verificationAddress, { value: stakeWei });
-      runtimeCase.onChain.create = { status: "submitted", txHash: createTx.hash };
-      runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_create_submitted", "Forensic createCase transaction submitted", { txHash: createTx.hash }));
-      await createTx.wait();
-      runtimeCase.onChain.create = { status: "confirmed", txHash: createTx.hash };
+      if (!skipOnChainCreate) {
+        // Server-side: orchestrator creates case + joins
+        runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_created", `Creating case for dispute: ${dispute}`, { stake, disputeStorage }));
+        const createTx = await contract.createCase(disputeStorage.ref, this.analysisSigner.address, this.verificationAddress, { value: stakeWei });
+        runtimeCase.onChain.create = { status: "submitted", txHash: createTx.hash };
+        runtimeCase.timeline.push(this.makeTimeline("orchestrator", "onchain_create_submitted", "Forensic createCase transaction submitted", { txHash: createTx.hash }));
+        await createTx.wait();
+        runtimeCase.onChain.create = { status: "confirmed", txHash: createTx.hash };
 
-      const actualCaseId = Number(await contract.getCaseCount());
-      runtimeCase.id = actualCaseId;
-      this.activeCases.set(actualCaseId, runtimeCase);
+        const actualCaseId = Number(await contract.getCaseCount());
+        runtimeCase.id = actualCaseId;
+      } else {
+        // Client-side: user already created case via MetaMask, just get the latest case
+        const actualCaseId = Number(await contract.getCaseCount());
+        runtimeCase.id = actualCaseId;
+        runtimeCase.timeline.push(this.makeTimeline("orchestrator", "case_created", `Case #${actualCaseId} already created on-chain by user. Joining as analysis...`, { stake, disputeStorage }));
+      }
+
+      this.activeCases.set(runtimeCase.id, runtimeCase);
 
       const analysisContract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.analysisSigner);
       const joinTx = await analysisContract.joinCase(runtimeCase.id, { value: stakeWei });
@@ -162,11 +171,12 @@ class Orchestrator {
         try {
           const dispute = typeof body.dispute === "string" ? body.dispute.trim() : "";
           const stake = typeof body.stake === "string" ? body.stake.trim() : "";
+          const skipCreate = body.skipOnChainCreate === true;
           if (!dispute || !stake) {
             this.writeJson(res, 400, { error: "dispute and stake are required" });
             return;
           }
-          const result = await this.createCase(dispute, stake);
+          const result = await this.createCase(dispute, stake, skipCreate);
           this.writeJson(res, 200, { success: true, ...result });
         } catch (error) {
           this.writeJson(res, 500, { error: (error as Error).message });

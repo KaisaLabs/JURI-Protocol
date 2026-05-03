@@ -48,6 +48,11 @@ export interface RuntimeVerdict {
   computeProvider: string;
   simulated: boolean;
   onChain: OnChainActionState;
+  attackVector?: string;
+  severity?: string;
+  rootCause?: string;
+  prevention?: string;
+  patternMatch?: { count: number; totalLost: number; topMatch: string; technique: string };
 }
 
 export interface RuntimePayoutStatus {

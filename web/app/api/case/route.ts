@@ -7,6 +7,7 @@ export async function POST(request: Request) {
 
   const dispute = typeof body?.dispute === "string" ? body.dispute.trim() : "";
   const stake = typeof body?.stake === "string" ? body.stake : "";
+  const skipOnChainCreate = body?.skipOnChainCreate === true;
   const parsedStake = parseStakeInput(stake);
 
   if (!dispute) {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       dispute,
       stake: parsedStake.value,
+      skipOnChainCreate,
     }),
   });
 }

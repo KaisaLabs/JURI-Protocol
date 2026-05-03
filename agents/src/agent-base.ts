@@ -289,9 +289,12 @@ export abstract class BaseAgent {
             try {
               const data = JSON.parse(body) as AgentControlCaseRequest;
               if (this.currentCase && this.currentCase.id !== data.runtimeCase.id && this.currentCase.status !== "resolved" && this.currentCase.status !== "failed") {
-                res.writeHead(409, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ ok: false, error: `Agent already running case ${this.currentCase.id}` }));
-                return;
+                // Old case still in progress — but if the runtimeCase being sent IS resolved/failed, override
+                if (data.runtimeCase.status !== "resolved" && data.runtimeCase.status !== "failed") {
+                  res.writeHead(409, { "Content-Type": "application/json" });
+                  res.end(JSON.stringify({ ok: false, error: `Agent already running case ${this.currentCase.id}` }));
+                  return;
+                }
               }
               this.currentCase = data.runtimeCase;
               this.seededCase = data.runtimeCase;

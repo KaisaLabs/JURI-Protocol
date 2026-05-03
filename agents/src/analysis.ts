@@ -47,18 +47,23 @@ class AnalysisAgent extends BaseAgent {
   async start(): Promise<void> {
     this.log("📊 Analysis Agent starting...");
     await this.connect();
-    while (true) {
-      const peers = await this.transport.getPeers();
-      if (peers.length >= 1) break;
-      this.log("Waiting for peers... (" + peers.length + "/1 minimum)");
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    this.log("Peers ready: " + (await this.transport.getPeers()).join(", "));
 
-    const runtimeCase = await this.waitForCaseSeed(600000);
-    this.caseDescription = runtimeCase.dispute;
-    this.caseId = runtimeCase.id;
-    this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
+    // Main loop: process cases forever
+    while (this.isRunning) {
+      // Wait for peers before each case
+      while (true) {
+        const peers = await this.transport.getPeers();
+        if (peers.length >= 1) break;
+        this.log("Waiting for peers... (" + peers.length + "/1 minimum)");
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      this.log("Peers ready: " + (await this.transport.getPeers()).join(", "));
+
+      this.currentCase = null; // Reset for new case
+      const runtimeCase = await this.waitForCaseSeed(600000);
+      this.caseDescription = runtimeCase.dispute;
+      this.caseId = runtimeCase.id;
+      this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
 
     // Gather real-time exploit intelligence
     this.log("🔎 Gathering exploit intelligence...");
@@ -100,6 +105,8 @@ class AnalysisAgent extends BaseAgent {
     this.log(`📋 VERDICT: ${verdict.result}`);
     this.log(`📝 ${verdict.reasoning?.slice(0, 200)}...`);
     this.log("✅ Analysis Agent: Done.");
+    this.currentCase = null; // Ready for next case
+    } // end while (this.isRunning)
   }
 
   private async generateAnalysis(round: number, forensicTrace: string, intelContext = ""): Promise<string> {

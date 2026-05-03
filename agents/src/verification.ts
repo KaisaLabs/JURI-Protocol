@@ -52,12 +52,14 @@ interface VerdictResult {
   reasoning: string;
   reasoningRef: string;
   onChainTx?: string;
+  patternMatch?: { count: number; totalLost: number; topMatch: string; technique: string };
 }
 
 class VerificationAgent extends BaseAgent {
   private forensicClosing = "";
   private analysisClosing = "";
   private caseId = 1;
+  private _lastAttackVector = "";
 
   // 0G Compute broker state (lazy-loaded via dynamic import)
   private zgBroker: any = null;
@@ -101,7 +103,7 @@ class VerificationAgent extends BaseAgent {
 
     // Report verdict to orchestrator so the case becomes "resolved"
     await this.reportVerdict(
-      { result: verdict.result as "FORENSIC" | "ANALYSIS" | "TIED", reasoning: verdict.reasoning, reasoningRef: verdict.reasoningRef, computeProvider: this.zgBrokerReady ? "0G Compute TEE" : (this.lastLLMMode === "provider" ? "Custom Provider" : "Simulated"), simulated: this.lastLLMMode === "simulated", onChain: { status: verdict.onChainTx ? "confirmed" : "skipped", txHash: verdict.onChainTx } },
+      { result: verdict.result as "FORENSIC" | "ANALYSIS" | "TIED", reasoning: verdict.reasoning, reasoningRef: verdict.reasoningRef, computeProvider: this.zgBrokerReady ? "0G Compute TEE" : (this.lastLLMMode === "provider" ? "Custom Provider" : "Simulated"), simulated: this.lastLLMMode === "simulated", onChain: { status: verdict.onChainTx ? "confirmed" : "skipped", txHash: verdict.onChainTx }, attackVector: verdict.attackVector, severity: verdict.severity, rootCause: verdict.rootCause, prevention: verdict.prevention, patternMatch: verdict.patternMatch },
       "resolved",
       `Verdict: ${verdict.result} — ${verdict.attackVector}`
     );
@@ -259,11 +261,14 @@ Cross-reference all findings. Publish final post-mortem.`;
 
     this.log(`📋 ${result} | ${av} | Severity: ${sev}`);
 
+    this._lastAttackVector = av;
+    const patternMatch = await this.matchHistoricalPatterns();
+
     let ref = "local";
     try { const r = await this.storage.storeVerdict(this.caseId, JSON.stringify({ result, av, sev, rc, prev, reason })); ref = r.ref; }
     catch { this.log("⚠️ Storage skipped"); }
 
-    return { result, attackVector: av, severity: sev, rootCause: rc, prevention: prev, reasoning: reason, reasoningRef: ref };
+    return { result, attackVector: av, severity: sev, rootCause: rc, prevention: prev, reasoning: reason, reasoningRef: ref, patternMatch };
   }
 
   private async storeOnChain(v: VerdictResult) {
@@ -284,6 +289,38 @@ Cross-reference all findings. Publish final post-mortem.`;
     await this.sendTo("forensic", "VERDICT_ISSUED", payload, [v.reasoningRef]);
     await this.sendTo("analysis", "VERDICT_ISSUED", payload, [v.reasoningRef]);
     this.log("Post-mortem broadcast ✅");
+  }
+
+  private async matchHistoricalPatterns(): Promise<{ count: number; totalLost: number; topMatch: string; technique: string } | undefined> {
+    try {
+      const response = await fetch("https://api.llama.fi/hacks", { signal: AbortSignal.timeout(10000) });
+      if (!response.ok) return undefined;
+      const hacks = await response.json();
+      if (!Array.isArray(hacks) || hacks.length === 0) return undefined;
+
+      const attackVector = this._lastAttackVector || "exploit";
+      const technique = attackVector.toLowerCase();
+
+      const matches = hacks.filter((h: any) => {
+        const name = (h.name || "").toLowerCase();
+        const cat = (h.category || "").toLowerCase();
+        const target = (h.target || "").toLowerCase();
+        const keywords = technique.split(" ").filter((w: string) => w.length > 2);
+        return keywords.some((kw: string) => name.includes(kw) || cat.includes(kw) || target.includes(kw));
+      });
+
+      const totalLost = matches.reduce((sum: number, h: any) => sum + (h.amount || 0), 0);
+      const topMatch = matches.sort((a: any, b: any) => (b.amount || 0) - (a.amount || 0))[0];
+
+      return {
+        count: matches.length,
+        totalLost,
+        topMatch: topMatch ? `${topMatch.name || "Unknown"} (${topMatch.date || "unknown"}, $${((topMatch.amount || 0) / 1e6).toFixed(0)}M)` : "None",
+        technique: attackVector,
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   private async executeAction(v: VerdictResult) {

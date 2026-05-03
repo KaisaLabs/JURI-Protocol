@@ -46,20 +46,23 @@ class ForensicAgent extends BaseAgent {
   async start(): Promise<void> {
     this.log("🔍 Forensic Agent starting...");
     await this.connect();
-    // JURI has 3 roles but only forensic+analysis debate; verification receives closings only
-    // So we need forensic to find at least 1 peer (analysis) before proceeding
-    while (true) {
-      const peers = await this.transport.getPeers();
-      if (peers.length >= 1) break;
-      this.log("Waiting for peers... (" + peers.length + "/1 minimum)");
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    this.log("Peers ready: " + (await this.transport.getPeers()).join(", "));
 
-    const runtimeCase = await this.waitForCaseSeed(600000);
-    this.caseDescription = runtimeCase.dispute;
-    this.caseId = runtimeCase.id;
-    this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
+    // Main loop: process cases forever
+    while (this.isRunning) {
+      // Wait for peers before each case
+      while (true) {
+        const peers = await this.transport.getPeers();
+        if (peers.length >= 1) break;
+        this.log("Waiting for peers... (" + peers.length + "/1 minimum)");
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      this.log("Peers ready: " + (await this.transport.getPeers()).join(", "));
+
+      this.currentCase = null; // Reset for new case
+      const runtimeCase = await this.waitForCaseSeed(600000);
+      this.caseDescription = runtimeCase.dispute;
+      this.caseId = runtimeCase.id;
+      this.log(`📋 Case #${this.caseId}: "${this.caseDescription}"`);
 
     // Gather real-time exploit intelligence from Brave, Serper, Rekt.news
     this.log("🔎 Gathering exploit intelligence...");
@@ -105,6 +108,8 @@ class ForensicAgent extends BaseAgent {
     this.log(`📋 VERDICT: ${verdict.result}`);
     this.log(`📝 ${verdict.reasoning?.slice(0, 200)}...`);
     this.log("✅ Forensic Agent: Done.");
+    this.currentCase = null; // Ready for next case
+    } // end while (this.isRunning)
   }
 
   private async generateReport(round: number, feedback: string, caseDesc: string, intelContext = ""): Promise<string> {
